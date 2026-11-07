@@ -1,0 +1,4285 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CodeSync — Real-time File Sync</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css">
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-core.min.js" data-manual></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-markup.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-clike.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-css.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-typescript.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-jsx.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-tsx.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-scss.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-yaml.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-markdown.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-go.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-rust.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-sql.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-diff.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/diff-match-patch@1.0.5/index.min.js"></script>
+
+<style>
+  :root {
+    --bg:#0a0e14;--panel:#0d1117;--panel-2:#161b22;--panel-3:#1c2128;--border:#21262d;--border-light:#30363d;
+    --text:#e6edf3;--text-dim:#c9d1d9;--muted:#7d8590;--muted-dim:#484f58;
+    --green:#3fb950;--green-bg:rgba(63,185,80,.1);--green-border:rgba(63,185,80,.3);
+    --cyan:#79c0ff;--cyan-bg:rgba(121,192,255,.1);--cyan-border:rgba(121,192,255,.3);
+    --red:#f85149;--red-bg:rgba(248,81,73,.1);--red-border:rgba(248,81,73,.3);
+    --yellow:#d29922;--yellow-bg:rgba(210,153,34,.1);--yellow-border:rgba(210,153,34,.3);
+    --purple:#bc8cff;--purple-bg:rgba(188,140,255,.1);--purple-border:rgba(188,140,255,.3);
+    --orange:#e8784a;
+    --font:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,'SF Mono',Monaco,'Cascadia Code','Roboto Mono',Consolas,monospace;
+    --shadow-sm:0 1px 3px rgba(0,0,0,.2);--shadow-md:0 4px 12px rgba(0,0,0,.25);--shadow-lg:0 20px 60px rgba(0,0,0,.6);
+    --radius:10px;--radius-sm:6px;--radius-lg:14px;--trans:all .15s ease;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden}
+  body{font-family:var(--font);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;font-size:14px;line-height:1.5}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  input,select,textarea{font-family:inherit}
+  svg{display:inline-block;vertical-align:middle;flex-shrink:0}
+  ::selection{background:rgba(88,166,255,.3)}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:5px;border:2px solid var(--bg)}
+  ::-webkit-scrollbar-thumb:hover{background:var(--border-light)}
+
+  .screen{display:none;height:100vh}
+  .screen.active{display:flex}
+  #screen-role.active,#screen-setup.active{align-items:center;justify-content:center;padding:32px}
+  #screen-main.active{flex-direction:column}
+
+  .hero{text-align:center;max-width:760px;width:100%}
+  .hero-brand{display:inline-flex;align-items:center;gap:12px;margin-bottom:12px}
+  .hero-logo{width:48px;height:48px;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,var(--cyan-bg),var(--purple-bg));border:1px solid var(--cyan-border);border-radius:12px;color:var(--cyan)}
+  .hero h1{font-size:42px;letter-spacing:-1.2px;font-weight:700;
+    background:linear-gradient(135deg,var(--text),var(--cyan));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .hero p{color:var(--muted);margin-bottom:48px;font-size:15px}
+  .roles{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .role-btn{background:var(--panel);border:1px solid var(--border);color:var(--text);padding:32px 24px;border-radius:var(--radius-lg);text-align:center;transition:var(--trans);position:relative;overflow:hidden}
+  .role-btn::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at top left,var(--cyan-bg),transparent 70%);opacity:0;transition:var(--trans);pointer-events:none}
+  .role-btn:hover{border-color:var(--cyan-border);background:var(--panel-2);transform:translateY(-3px);box-shadow:var(--shadow-md)}
+  .role-btn:hover::before{opacity:1}
+  .role-icon{width:56px;height:56px;display:inline-flex;align-items:center;justify-content:center;background:var(--panel-2);border:1px solid var(--border);border-radius:14px;color:var(--cyan);margin-bottom:16px;transition:var(--trans)}
+  .role-btn:hover .role-icon{border-color:var(--cyan-border);background:var(--cyan-bg)}
+  .role-title{font-size:19px;font-weight:600;margin-bottom:8px}
+  .role-desc{color:var(--muted);font-size:13px;line-height:1.55}
+
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px;width:100%;max-width:560px;box-shadow:var(--shadow-lg);animation:card-in .25s ease-out;max-height:90vh;overflow:auto}
+  @keyframes card-in{from{opacity:0;transform:translateY(-8px) scale(.98)}to{opacity:1;transform:none}}
+  .card h2{font-size:20px;font-weight:600;margin-bottom:28px;display:flex;align-items:center;gap:10px}
+  .field{margin-bottom:20px}
+  .field label{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px;font-weight:500;margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px}
+  .field input[type="text"]{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:11px 13px;border-radius:var(--radius-sm);font-family:var(--mono);font-size:13px;transition:var(--trans)}
+  .field input[type="text"]:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px var(--cyan-bg)}
+  .hint{color:var(--muted);font-size:11.5px;margin-top:8px;line-height:1.55}
+  .folder-btn{width:100%;background:var(--bg);border:1px dashed var(--border-light);color:var(--muted);padding:14px 16px;border-radius:var(--radius-sm);text-align:left;font-family:var(--mono);font-size:13px;transition:var(--trans);display:flex;align-items:center;gap:10px}
+  .folder-btn:hover{border-color:var(--cyan);color:var(--text);background:var(--panel-2)}
+  .folder-btn.selected{border-style:solid;border-color:var(--green-border);background:var(--green-bg);color:var(--text)}
+  .folder-btn.selected svg{color:var(--green)}
+  .btn-primary{width:100%;background:var(--green);color:#fff;padding:13px;border-radius:var(--radius-sm);font-size:14px;font-weight:600;margin-top:8px;transition:var(--trans);display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:var(--shadow-sm)}
+  .btn-primary:hover:not(:disabled){background:#2ea043;transform:translateY(-1px)}
+  .btn-primary:disabled{opacity:.5;cursor:not-allowed}
+  .btn-secondary{width:100%;background:var(--panel-2);color:var(--text);border:1px solid var(--border);padding:10px;border-radius:var(--radius-sm);font-size:12.5px;font-weight:500;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px;transition:var(--trans)}
+  .btn-secondary:hover{background:var(--panel-3);border-color:var(--border-light)}
+  .error{color:var(--red);font-size:13px;margin-top:14px;min-height:18px;line-height:1.5}
+
+  .fsa-warning{padding:14px;background:var(--red-bg);border:1px solid var(--red-border);border-radius:var(--radius-sm);color:var(--text-dim);font-size:12px;line-height:1.6;margin-bottom:20px}
+  .fsa-warning h4{color:var(--red);font-size:13px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+  .fsa-warning p{margin-bottom:8px}
+  .fsa-warning code{background:var(--panel-3);padding:1px 6px;border-radius:3px;font-family:var(--mono);font-size:11.5px;color:var(--cyan)}
+  .fsa-warning ol{margin:8px 0 8px 20px;font-size:11.5px}
+  .fsa-warning li{margin-bottom:4px}
+  .fsa-warning .btn-secondary{margin-top:10px}
+
+  .app-header{display:flex;align-items:center;gap:10px;padding:0 16px;background:var(--panel);border-bottom:1px solid var(--border);height:54px;flex-shrink:0}
+  .brand{display:flex;align-items:center;gap:9px;font-size:15px;font-weight:700;color:var(--text);letter-spacing:-.2px;margin-right:4px}
+  .brand-logo{width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--cyan-bg),var(--purple-bg));border:1px solid var(--cyan-border);border-radius:7px;color:var(--cyan)}
+  .project-name{font-family:var(--mono);font-size:12.5px;color:var(--text-dim);padding:5px 12px;background:var(--panel-2);border:1px solid var(--border);border-radius:var(--radius-sm);display:flex;align-items:center;gap:7px;max-width:200px}
+  .project-name svg{color:var(--muted)}
+  .project-name span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  .branch-wrap{position:relative}
+  .branch-badge{font-family:var(--mono);font-size:12.5px;padding:5px 11px 5px 9px;border-radius:var(--radius-sm);background:var(--purple-bg);border:1px solid var(--purple-border);color:var(--purple);display:flex;align-items:center;gap:6px;max-width:220px;transition:var(--trans)}
+  .branch-badge:hover{background:rgba(188,140,255,.18)}
+  .branch-badge.open{background:rgba(188,140,255,.22);border-color:var(--purple)}
+  .branch-badge svg{width:13px;height:13px}
+  .branch-badge .branch-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .branch-badge.spoke{cursor:default;opacity:.85}
+  .branch-dropdown{position:absolute;top:calc(100% + 8px);left:0;min-width:300px;max-width:400px;background:var(--panel-2);border:1px solid var(--border-light);border-radius:var(--radius);box-shadow:var(--shadow-lg);z-index:500;overflow:hidden;animation:dropdown-in .15s ease-out}
+  .branch-dropdown[hidden]{display:none}
+  .branch-dropdown-header{padding:10px 14px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .branch-list{list-style:none;max-height:280px;overflow-y:auto;padding:4px 0}
+  .branch-item{display:flex;align-items:center;gap:8px;padding:8px 14px;font-size:12.5px;color:var(--text-dim);cursor:pointer}
+  .branch-item:hover{background:var(--panel-3)}
+  .branch-item.active{background:rgba(188,140,255,.06);color:var(--purple)}
+  .branch-item .branch-dot{width:7px;height:7px;border-radius:50%;background:transparent;border:1.5px solid var(--muted);flex-shrink:0}
+  .branch-item.active .branch-dot{background:var(--purple);border-color:var(--purple)}
+  .branch-item .branch-name{flex:1;min-width:0;font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .branch-item .branch-head{font-size:11px;color:var(--muted);font-family:var(--mono);padding:1px 6px;background:var(--panel-3);border-radius:3px}
+  .branch-item .branch-del{width:20px;height:20px;display:flex;align-items:center;justify-content:center;border-radius:4px;color:var(--muted);opacity:0;transition:var(--trans)}
+  .branch-item:hover .branch-del{opacity:1}
+  .branch-item .branch-del:hover{color:var(--red);background:var(--red-bg)}
+  .branch-item .branch-del svg{width:12px;height:12px}
+  .branch-actions{padding:6px 8px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:2px}
+  .branch-actions button{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:4px;font-size:12px;color:var(--text-dim);text-align:left;width:100%}
+  .branch-actions button:hover{background:var(--panel-3);color:var(--text)}
+  .branch-actions button:disabled{opacity:.4;cursor:not-allowed}
+  .branch-actions button svg{width:13px;height:13px;color:var(--muted)}
+  .branch-empty{padding:16px 14px;text-align:center;color:var(--muted);font-size:12px;font-style:italic}
+
+  .btn-commit{background:var(--green);color:#fff;padding:6px 14px;border-radius:var(--radius-sm);font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:6px;transition:var(--trans);white-space:nowrap}
+  .btn-commit:hover:not(:disabled){background:#2ea043;transform:translateY(-1px)}
+  .btn-commit:disabled{opacity:.4;cursor:not-allowed}
+  .btn-commit svg{width:13px;height:13px}
+
+  .role-badge{font-size:11.5px;font-weight:500;padding:5px 12px;border-radius:999px;background:var(--panel-2);border:1px solid var(--border);color:var(--muted);display:flex;align-items:center;gap:6px}
+  .role-badge.server{background:var(--cyan-bg);border-color:var(--cyan-border);color:var(--cyan)}
+  .role-badge.spoke{background:var(--purple-bg);border-color:var(--purple-border);color:var(--purple)}
+  .user-badge{font-size:11.5px;font-weight:500;padding:5px 12px;border-radius:999px;background:var(--purple-bg);border:1px solid var(--purple-border);color:var(--purple);display:flex;align-items:center;gap:6px;max-width:160px}
+  .user-badge span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .header-spacer{flex:1}
+  .sync-mode{font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--panel-2);border:1px solid var(--border);color:var(--muted);display:flex;align-items:center;gap:5px;letter-spacing:.3px;text-transform:uppercase;cursor:help}
+  .sync-mode.patch{background:var(--green-bg);border-color:var(--green-border);color:var(--green)}
+  .sync-mode::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.8}
+
+  .virtual-banner{padding:8px 16px;background:var(--yellow-bg);border-bottom:1px solid var(--yellow-border);color:var(--yellow);font-size:12px;display:none;align-items:center;gap:8px;flex-shrink:0;line-height:1.4}
+  .virtual-banner.visible{display:flex}
+  .virtual-banner svg{width:14px;height:14px;flex-shrink:0}
+  .virtual-banner span{flex:1;min-width:0}
+
+  .snapshot-wrap{position:relative;display:inline-flex}
+  .snapshot-badge{font-size:11.5px;font-weight:500;padding:5px 11px;border-radius:999px;background:var(--yellow-bg);border:1px solid var(--yellow-border);color:var(--yellow);display:none;align-items:center;gap:6px;cursor:pointer}
+  .snapshot-badge.visible{display:flex}
+  .snapshot-badge.open{background:rgba(210,153,34,.22);border-color:var(--yellow)}
+  .snapshot-badge.flash{animation:pulseYellow 1.2s ease-in-out}
+  @keyframes pulseYellow{0%,100%{opacity:1}50%{opacity:.55}}
+  .snapshot-dropdown{position:absolute;top:calc(100% + 8px);right:0;min-width:360px;max-width:440px;background:var(--panel-2);border:1px solid var(--border-light);border-radius:var(--radius);box-shadow:var(--shadow-lg);z-index:500;overflow:hidden;animation:dropdown-in .15s ease-out}
+  .snapshot-dropdown[hidden]{display:none}
+  .snapshot-dropdown-header{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);gap:8px}
+  .snapshot-header-actions{display:flex;gap:4px}
+  .btn-mini{padding:3px 8px;font-size:10.5px;font-weight:600;border-radius:4px;border:1px solid var(--border);color:var(--muted);display:flex;align-items:center;gap:4px}
+  .btn-mini:hover{color:var(--text);background:var(--panel-3);border-color:var(--border-light)}
+  .btn-mini:disabled{opacity:.4;cursor:not-allowed}
+  .snapshot-list{list-style:none;max-height:400px;overflow-y:auto;padding:4px 0}
+  .snapshot-item{padding:8px 14px;display:flex;align-items:center;gap:10px;font-size:12.5px}
+  .snapshot-item:hover{background:var(--panel-3)}
+  .snapshot-item-info{flex:1;min-width:0}
+  .snapshot-item-name{font-family:var(--mono);font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px}
+  .snapshot-item-meta{font-size:11px;color:var(--muted);display:flex;gap:6px;flex-wrap:wrap}
+  .snapshot-restore-btn{padding:4px 10px;font-size:11px;font-weight:600;border-radius:4px;background:var(--cyan-bg);border:1px solid var(--cyan-border);color:var(--cyan);white-space:nowrap;flex-shrink:0}
+  .snapshot-restore-btn:hover:not(:disabled){background:rgba(121,192,255,.22)}
+  .snapshot-restore-btn:disabled{opacity:.5;cursor:not-allowed}
+  .snapshot-empty{padding:30px 14px;text-align:center;color:var(--muted);font-size:12px;font-style:italic}
+
+  .client-count-wrap{position:relative}
+  .client-count{font-size:12px;padding:5px 11px;border-radius:999px;background:var(--panel-2);border:1px solid var(--border);color:var(--muted);display:flex;align-items:center;gap:6px}
+  .client-count:hover{color:var(--text);border-color:var(--border-light);background:var(--panel-3)}
+  .client-count.open{border-color:var(--cyan-border);color:var(--cyan);background:var(--cyan-bg)}
+  .online-dropdown{position:absolute;top:calc(100% + 8px);right:0;min-width:260px;max-width:320px;background:var(--panel-2);border:1px solid var(--border-light);border-radius:var(--radius);box-shadow:var(--shadow-lg);z-index:500;overflow:hidden}
+  .online-dropdown[hidden]{display:none}
+  @keyframes dropdown-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+  .online-dropdown-header{padding:11px 14px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .online-count-badge{font-family:var(--mono);font-size:11px;padding:2px 8px;background:var(--cyan-bg);border:1px solid var(--cyan-border);border-radius:999px;color:var(--cyan);letter-spacing:0}
+  .online-list{list-style:none;max-height:320px;overflow-y:auto;padding:6px 0}
+  .online-item{display:flex;align-items:center;gap:10px;padding:8px 14px;font-size:12.5px;color:var(--text-dim)}
+  .online-item:hover{background:var(--panel-3)}
+  .online-item.self{background:rgba(188,140,255,.06)}
+  .online-item .online-avatar{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:var(--purple-bg);border:1px solid var(--purple-border);color:var(--purple);font-size:11px;font-weight:700;flex-shrink:0;text-transform:uppercase}
+  .online-item .online-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono)}
+  .online-item .online-tag{font-size:10.5px;font-weight:600;color:var(--muted);padding:1px 6px;background:var(--panel-3);border-radius:3px;text-transform:uppercase}
+  .online-item.self .online-tag{color:var(--purple);background:var(--purple-bg)}
+  .online-empty{padding:20px 14px;text-align:center;font-size:12px;color:var(--muted);font-style:italic}
+
+  .conn-status{font-size:11.5px;font-weight:500;padding:5px 11px;border-radius:999px;border:1px solid var(--border);color:var(--muted);display:flex;align-items:center;gap:6px}
+  .conn-status::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.7}
+  .conn-status.ok{color:var(--green);border-color:var(--green-border);background:var(--green-bg)}
+  .conn-status.ok::before{animation:pulse 2s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(63,185,80,.5)}50%{opacity:.8;box-shadow:0 0 0 5px rgba(63,185,80,0)}}
+  .conn-status.err{color:var(--red);border-color:var(--red-border);background:var(--red-bg)}
+  .conn-status.warn{color:var(--yellow);border-color:var(--yellow-border);background:var(--yellow-bg)}
+  .conn-status.warn::before{animation:pulse 1.5s ease-in-out infinite}
+  .btn-ghost{color:var(--muted);padding:6px 14px;border-radius:var(--radius-sm);font-size:12.5px;font-weight:500;border:1px solid var(--border);transition:var(--trans)}
+  .btn-ghost:hover{color:var(--text);background:var(--panel-2);border-color:var(--border-light)}
+
+  .main-layout{flex:1;display:grid;grid-template-columns:320px 1fr 320px;overflow:hidden;min-height:0}
+  .panel{display:flex;flex-direction:column;overflow:hidden;min-height:0}
+  .tree-panel{background:var(--panel);border-right:1px solid var(--border)}
+  .log-panel{background:var(--panel);border-left:1px solid var(--border)}
+  .viewer-panel{background:var(--bg)}
+
+  .panel-header{padding:12px 14px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;min-height:40px}
+  .panel-title{display:flex;align-items:center;gap:7px}
+  .panel-title svg{width:14px;height:14px}
+  .panel-header .count{font-family:var(--mono);font-size:11px;padding:2px 7px;background:var(--panel-2);border-radius:4px;color:var(--text-dim);letter-spacing:0}
+  .btn-icon{width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-sm);color:var(--muted);transition:var(--trans)}
+  .btn-icon:hover{color:var(--text);background:var(--panel-2)}
+  .btn-icon svg{width:15px;height:15px}
+  .btn-icon-sm{width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:4px;color:var(--muted);transition:var(--trans)}
+  .btn-icon-sm:hover{color:var(--text);background:var(--panel-2)}
+  .btn-icon-sm svg{width:13px;height:13px}
+
+  .panel-tabs{display:flex;gap:4px;align-items:center}
+  .panel-tab{padding:5px 10px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;border-radius:4px;color:var(--muted);border:1px solid transparent;transition:var(--trans)}
+  .panel-tab:hover{color:var(--text);background:var(--panel-2)}
+  .panel-tab.active{color:var(--cyan);background:var(--cyan-bg);border-color:var(--cyan-border)}
+  .tab-badge{font-family:var(--mono);font-size:10px;padding:1px 5px;border-radius:8px;background:var(--panel-3);color:var(--muted);margin-left:5px;letter-spacing:0;font-weight:500}
+  .panel-tab.active .tab-badge{background:rgba(121,192,255,.2);color:var(--cyan)}
+
+  .search-box{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--panel);flex-shrink:0}
+  .search-box svg{width:14px;height:14px;color:var(--muted)}
+  .search-box input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:12.5px;padding:4px 0}
+  .search-box input::placeholder{color:var(--muted-dim)}
+  .search-clear{width:18px;height:18px;display:none;align-items:center;justify-content:center;border-radius:4px;color:var(--muted)}
+  .search-clear.visible{display:flex}
+  .search-clear:hover{color:var(--text);background:var(--panel-3)}
+  .search-clear svg{width:11px;height:11px}
+
+  .bulk-toolbar{padding:8px 12px;border-bottom:1px solid var(--cyan-border);background:var(--cyan-bg);display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;flex-shrink:0}
+  .bulk-toolbar[hidden]{display:none}
+  .bulk-info{color:var(--cyan);font-weight:500;display:flex;align-items:center;gap:6px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .bulk-info strong{font-family:var(--mono);background:rgba(121,192,255,.15);padding:1px 7px;border-radius:4px}
+  .bulk-actions{display:flex;gap:4px;flex-shrink:0}
+  .btn-tiny{padding:4px 9px;font-size:11.5px;font-weight:500;border-radius:4px;border:1px solid var(--border);color:var(--muted);white-space:nowrap}
+  .btn-tiny:hover{color:var(--text);background:var(--panel-2);border-color:var(--border-light)}
+  .btn-tiny:disabled{opacity:.4;cursor:not-allowed}
+  .btn-tiny.danger{color:var(--red);border-color:var(--red-border);background:var(--red-bg)}
+  .btn-tiny.danger:hover{background:rgba(248,81,73,.2)}
+
+  .tree{flex:1;overflow:auto;padding:6px 0;font-family:var(--mono);font-size:12.5px;line-height:1.6}
+  .tree-item{display:flex;align-items:center;padding:3px 12px;cursor:pointer;user-select:none;white-space:nowrap;border-left:2px solid transparent;transition:background .1s;position:relative}
+  .tree-item:hover{background:var(--panel-2)}
+  .tree-item.selected{background:var(--cyan-bg);border-left-color:var(--cyan)}
+  .tree-item.multi-selected{background:rgba(188,140,255,.08)}
+  .tree-item.has-conflict .name::after{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--red);margin-left:6px;vertical-align:middle}
+  .tree-item .chevron{width:14px;color:var(--muted);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .tree-item .chevron svg{width:11px;height:11px}
+  .tree-item .icon{margin-right:7px;display:flex;align-items:center;flex-shrink:0}
+  .tree-item .icon svg{width:13px;height:13px}
+  .tree-item.dir .icon{color:var(--cyan)}
+  .tree-item.dir .name{color:var(--cyan);font-weight:500}
+  .tree-item.file .icon{color:var(--muted)}
+  .tree-item.file .name{color:var(--text-dim)}
+  .tree-item.file.selected .name{color:var(--cyan)}
+  .tree-item .name{overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .tree-item .checkbox{width:13px;height:13px;margin-right:6px;border:1.5px solid var(--muted-dim);border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;opacity:.5}
+  .tree-item:hover .checkbox,.tree-item .checkbox.checked,.tree-panel.has-selection .tree-item .checkbox{opacity:1}
+  .tree-item .checkbox.checked{background:var(--cyan);border-color:var(--cyan)}
+  .tree-item .checkbox.checked::after{content:'';width:4px;height:7px;border:solid var(--bg);border-width:0 1.5px 1.5px 0;transform:rotate(45deg) translateY(-1px);margin-bottom:1px}
+  .check-spacer{width:13px;margin-right:6px;flex-shrink:0;display:inline-block}
+  .chevron-spacer{width:14px;flex-shrink:0;display:inline-block}
+  .tree-empty{padding:32px 20px;color:var(--muted);font-size:12.5px;text-align:center;line-height:1.7}
+  .tree-empty svg{width:32px;height:32px;opacity:.4;margin-bottom:10px;display:block;margin-left:auto;margin-right:auto}
+
+  .tree-item.file.ext-js .name{color:#f1e05a}
+  .tree-item.file.ext-ts .name{color:#4b9fe8}
+  .tree-item.file.ext-html .name{color:#e8784a}
+  .tree-item.file.ext-css .name{color:#a371f7}
+  .tree-item.file.ext-json .name{color:#3fb950}
+  .tree-item.file.ext-md .name{color:#58a6ff}
+  .tree-item.file.ext-py .name{color:#4b9fe8}
+  .tree-item.file.ext-go .name{color:#79c0ff}
+  .tree-item.file.ext-rs .name{color:#e8784a}
+  .tree-item.file.ext-sh .name{color:#3fb950}
+  .tree-item.file.selected .name{color:var(--cyan)!important}
+
+  .viewer-header{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--panel);flex-shrink:0;gap:12px;min-height:42px}
+  .viewer-path-wrap{display:flex;align-items:baseline;gap:12px;min-width:0;flex:1}
+  .viewer-header .path{font-family:var(--mono);font-size:12.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .viewer-header .path:empty::before{content:'Fayl seçilməyib';font-style:italic;color:var(--muted)}
+  .path-meta{font-family:var(--mono);font-size:11.5px;color:var(--muted);white-space:nowrap}
+  .viewer-actions{display:flex;gap:2px;flex-shrink:0}
+
+  .viewer-body{flex:1;display:flex;min-height:0;overflow:hidden;position:relative}
+  .viewer-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);gap:12px;padding:40px;text-align:center}
+  .viewer-empty svg{width:48px;height:48px;opacity:.25;color:var(--cyan)}
+  .viewer-empty p{font-size:14px;color:var(--text-dim);font-weight:500}
+  .viewer-empty small{font-size:12px;color:var(--muted)}
+
+  .viewer-message{display:none;flex:1;align-items:center;justify-content:center;padding:40px;text-align:center;font-size:13px;font-style:italic;color:var(--yellow)}
+  .viewer-message.visible{display:flex}
+
+  .code-view{display:none;flex:1;overflow:auto;min-height:0;font-family:var(--mono);font-size:12.5px;line-height:1.65;tab-size:2;background:var(--bg)}
+  .code-view.visible{display:flex}
+  .code-gutter{position:sticky;left:0;flex-shrink:0;min-width:56px;padding:16px 14px 16px 20px;text-align:right;color:var(--muted-dim);background:var(--bg);border-right:1px solid var(--border);user-select:none;font-variant-numeric:tabular-nums;font-family:inherit;font-size:inherit;line-height:inherit;z-index:1}
+  .code-gutter>div{display:block}
+  .code-content{flex:1 0 auto;padding:16px 20px;white-space:pre;color:var(--text);font-family:inherit;font-size:inherit;line-height:inherit;margin:0;min-width:0;overflow:visible}
+  .code-content[class*="language-"],.code-content code[class*="language-"]{background:transparent!important;text-shadow:none!important}
+
+  .image-view{display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;overflow:auto;padding:24px;gap:16px;background:var(--bg)}
+  .image-view.visible{display:flex}
+  .image-wrapper{max-width:100%;max-height:calc(100vh - 220px);display:flex;align-items:center;justify-content:center;padding:12px;background:repeating-conic-gradient(var(--panel) 0% 25%,var(--panel-2) 0% 50%) 50%/20px 20px;border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-md)}
+  .image-view img{max-width:100%;max-height:calc(100vh - 250px);object-fit:contain;display:block;border-radius:2px}
+  .image-info{font-family:var(--mono);font-size:11.5px;color:var(--muted);padding:8px 14px;background:var(--panel-2);border:1px solid var(--border);border-radius:var(--radius-sm);display:flex;align-items:center;gap:10px}
+  .image-info strong{color:var(--text-dim);font-weight:500}
+
+  .conflict-view{display:none;flex:1;flex-direction:column;overflow:hidden;background:var(--bg);min-height:0}
+  .conflict-view.visible{display:flex}
+  .conflict-banner{padding:10px 16px;background:var(--red-bg);border-bottom:1px solid var(--red-border);color:var(--red);font-size:12.5px;display:flex;align-items:center;gap:8px;font-weight:500;flex-shrink:0;line-height:1.4}
+  .conflict-banner svg{width:14px;height:14px;flex-shrink:0}
+  .conflict-banner.warn-style{background:var(--yellow-bg);border-bottom-color:var(--yellow-border);color:var(--yellow)}
+  .conflict-panes{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);overflow:hidden;min-height:0}
+  .conflict-pane{display:flex;flex-direction:column;overflow:hidden;min-height:0;background:var(--bg)}
+  .conflict-pane-header{padding:8px 14px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-shrink:0}
+  .conflict-pane-header svg{width:12px;height:12px}
+  .conflict-pane-header.server{background:var(--cyan-bg);color:var(--cyan);border-bottom-color:var(--cyan-border)}
+  .conflict-pane-header.local{background:var(--purple-bg);color:var(--purple);border-bottom-color:var(--purple-border)}
+  .conflict-pane-content{flex:1;overflow:auto;padding:12px 16px;font-family:var(--mono);font-size:12px;line-height:1.6;white-space:pre;color:var(--text-dim);margin:0;min-height:0;background:transparent}
+  .conflict-actions{padding:12px 16px;display:flex;gap:8px;border-top:1px solid var(--border);background:var(--panel);flex-shrink:0;justify-content:center;flex-wrap:wrap}
+  .conflict-actions button{padding:8px 16px;font-size:12.5px;font-weight:500;border-radius:var(--radius-sm);display:flex;align-items:center;gap:6px}
+  .conflict-actions button svg{width:14px;height:14px}
+  .btn-keep-server{background:var(--cyan-bg);border:1px solid var(--cyan-border);color:var(--cyan)}
+  .btn-keep-server:hover{background:rgba(121,192,255,.22)}
+  .btn-keep-local{background:var(--green-bg);border:1px solid var(--green-border);color:var(--green)}
+  .btn-keep-local:hover{background:rgba(63,185,80,.22)}
+  .btn-merge{background:var(--yellow-bg);border:1px solid var(--yellow-border);color:var(--yellow)}
+  .btn-merge:hover{background:rgba(210,153,34,.22)}
+
+  .log{flex:1;overflow-y:auto;padding:8px 0;font-family:var(--mono);font-size:11px;line-height:1.7}
+  .log-item{padding:3px 14px;color:var(--muted);word-break:break-word;display:flex;gap:7px;align-items:baseline}
+  .log-item .log-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;background:currentColor;opacity:.6;margin-top:5px}
+  .log-item .time{color:var(--muted-dim);flex-shrink:0;font-variant-numeric:tabular-nums}
+  .log-item .log-user{color:var(--purple);font-weight:600;flex-shrink:0;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .log-item .log-user::after{content:':';color:var(--muted-dim);margin-left:1px;font-weight:400}
+  .log-item .msg{flex:1;min-width:0}
+  .log-item.success{color:var(--green)}
+  .log-item.error{color:var(--red)}
+  .log-item.warn{color:var(--yellow)}
+  .log-item.info{color:var(--text-dim)}
+  .log-item.sync{color:var(--cyan)}
+  .log-item.snapshot{color:var(--orange)}
+  .log-item.vcs{color:var(--purple)}
+  .log-item.conflict{color:var(--red);font-weight:500}
+  .log-empty{padding:32px 20px;color:var(--muted);font-size:12px;text-align:center;font-style:italic;line-height:1.7}
+
+  .history-controls{padding:8px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11.5px;flex-shrink:0}
+  .history-controls label{display:flex;align-items:center;gap:6px;color:var(--muted);cursor:pointer}
+  .history-controls input[type="checkbox"]{accent-color:var(--purple)}
+  .history{flex:1;overflow-y:auto;padding:6px 0}
+  .history[hidden]{display:none}
+  .history-item{padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
+  .history-item:hover{background:var(--panel-2)}
+  .history-item.active{background:rgba(188,140,255,.06);border-left:2px solid var(--purple);padding-left:12px}
+  .history-item.auto{opacity:.7}
+  .history-item-head{display:flex;align-items:baseline;gap:6px;margin-bottom:4px}
+  .history-item-id{font-family:var(--mono);font-size:10.5px;padding:1px 5px;background:var(--panel-3);border-radius:3px;color:var(--muted);flex-shrink:0}
+  .history-item-msg{font-size:12px;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .history-item-meta{display:flex;gap:6px;flex-wrap:wrap;font-size:10.5px;color:var(--muted);font-family:var(--mono)}
+  .history-item-meta .branch-tag{color:var(--purple)}
+  .history-item-actions{margin-top:6px;display:flex;gap:4px}
+  .history-item-actions button{padding:3px 8px;font-size:10.5px;font-weight:600;border-radius:4px;border:1px solid var(--border);color:var(--muted);display:flex;align-items:center;gap:4px}
+  .history-item-actions button:hover{color:var(--text);background:var(--panel-3);border-color:var(--border-light)}
+  .history-item-actions button svg{width:11px;height:11px}
+  .history-item-actions button.restore-btn{color:var(--cyan);border-color:var(--cyan-border)}
+  .history-item-actions button.restore-btn:hover{background:var(--cyan-bg)}
+  .history-empty{padding:32px 20px;text-align:center;color:var(--muted);font-size:12px;font-style:italic}
+
+  .context-menu{position:fixed;background:var(--panel-2);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:4px;box-shadow:var(--shadow-lg);z-index:3000;display:none;min-width:200px}
+  .context-menu.visible{display:block}
+  .context-menu button{display:flex;align-items:center;gap:9px;width:100%;padding:8px 12px;border-radius:4px;font-size:12.5px;color:var(--text-dim);text-align:left;white-space:nowrap}
+  .context-menu button:hover{background:var(--panel-3);color:var(--text)}
+  .context-menu button.danger{color:var(--red)}
+  .context-menu button.danger:hover{background:var(--red-bg)}
+  .context-menu button svg{width:14px;height:14px;flex-shrink:0}
+  .context-divider{height:1px;background:var(--border);margin:4px 6px}
+
+  .toast-container{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:2000;pointer-events:none}
+  .toast{background:var(--panel-2);border:1px solid var(--border);border-radius:var(--radius);padding:11px 16px;display:flex;align-items:center;gap:11px;font-size:13px;color:var(--text);box-shadow:var(--shadow-lg);animation:toast-in .25s cubic-bezier(.16,1,.3,1);pointer-events:auto;max-width:420px;line-height:1.4}
+  .toast svg{width:16px;height:16px;flex-shrink:0}
+  .toast.success{border-color:var(--green-border)}
+  .toast.success svg{color:var(--green)}
+  .toast.error{border-color:var(--red-border)}
+  .toast.error svg{color:var(--red)}
+  .toast.warn{border-color:var(--yellow-border)}
+  .toast.warn svg{color:var(--yellow)}
+  .toast.info svg{color:var(--cyan)}
+  .toast-out{opacity:0;transform:translateX(30px);transition:all .25s ease-in}
+  @keyframes toast-in{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
+
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:4000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
+  .modal[hidden]{display:none}
+  .modal-content{background:var(--panel);border:1px solid var(--border-light);border-radius:var(--radius-lg);width:100%;max-width:720px;max-height:90vh;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);overflow:hidden;animation:card-in .2s ease-out}
+  .modal-header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0}
+  .modal-header h3{font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px;min-width:0}
+  .modal-header h3 svg{width:16px;height:16px;color:var(--purple);flex-shrink:0}
+  .modal-close{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;color:var(--muted)}
+  .modal-close:hover{color:var(--text);background:var(--panel-2)}
+  .modal-close svg{width:14px;height:14px}
+  .modal-body{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px;min-height:0}
+  .modal-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;background:var(--panel);flex-shrink:0}
+  .modal-footer button{padding:8px 16px;font-size:12.5px;font-weight:600;border-radius:var(--radius-sm);display:flex;align-items:center;gap:6px}
+  .modal-footer button svg{width:13px;height:13px}
+  .btn-cancel{color:var(--muted);border:1px solid var(--border);background:var(--panel-2)}
+  .btn-cancel:hover{color:var(--text);background:var(--panel-3)}
+  .btn-save{background:var(--green);color:#fff}
+  .btn-save:hover:not(:disabled){background:#2ea043}
+  .btn-save:disabled{opacity:.5;cursor:not-allowed}
+
+  .field-row{display:flex;flex-direction:column;gap:6px}
+  .field-row label{font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+  .field-row input[type="text"],.field-row textarea,.field-row select{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:var(--radius-sm);font-family:var(--mono);font-size:13px;outline:none;transition:var(--trans);width:100%}
+  .field-row input[type="text"]:focus,.field-row textarea:focus,.field-row select:focus{border-color:var(--purple);box-shadow:0 0 0 3px var(--purple-bg)}
+  .field-row textarea{resize:vertical;min-height:60px;font-family:var(--font);font-size:13px}
+  .field-row .hint-inline{font-size:11px;color:var(--muted);margin-top:2px}
+
+  .change-list{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);max-height:300px;overflow-y:auto;font-family:var(--mono);font-size:12px;padding:6px 0}
+  .change-item{display:flex;align-items:center;gap:8px;padding:4px 14px;color:var(--text-dim)}
+  .change-item .change-tag{width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;border-radius:3px;flex-shrink:0}
+  .change-item.added .change-tag{color:var(--green);background:var(--green-bg)}
+  .change-item.modified .change-tag{color:var(--yellow);background:var(--yellow-bg)}
+  .change-item.deleted .change-tag{color:var(--red);background:var(--red-bg)}
+  .change-item .change-path{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .change-empty{padding:20px;text-align:center;color:var(--muted);font-size:12px;font-style:italic}
+
+  .merge-section{margin-bottom:14px}
+  .merge-section h4{font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:6px;font-weight:600}
+  .merge-section h4 svg{width:13px;height:13px}
+  .merge-auto-list{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);max-height:180px;overflow-y:auto;font-family:var(--mono);font-size:12px;padding:4px 0}
+  .merge-conflict-item{background:var(--bg);border:1px solid var(--red-border);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:6px}
+  .merge-conflict-path{font-family:var(--mono);font-size:12px;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+  .merge-conflict-path svg{width:12px;height:12px;color:var(--red)}
+  .merge-conflict-options{display:flex;flex-direction:column;gap:4px}
+  .merge-conflict-options label{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-dim);cursor:pointer;padding:5px 8px;border-radius:4px}
+  .merge-conflict-options label:hover{background:var(--panel-2)}
+  .merge-conflict-options input[type="radio"]{accent-color:var(--purple)}
+
+  .details-grid{display:grid;grid-template-columns:120px 1fr;gap:6px 14px;font-size:12.5px}
+  .details-grid dt{color:var(--muted);font-weight:500}
+  .details-grid dd{color:var(--text);font-family:var(--mono);word-break:break-word}
+  .details-grid dd.txt{font-family:var(--font)}
+
+  @media (max-width:1200px){
+    .main-layout{grid-template-columns:280px 1fr 280px}
+    .user-badge{max-width:120px}
+    .project-name{max-width:160px}
+    .branch-badge{max-width:160px}
+  }
+  @media (max-width:1000px){
+    .main-layout{grid-template-columns:260px 1fr}
+    .log-panel{display:none}
+    .conflict-panes{grid-template-columns:1fr;grid-template-rows:1fr 1fr}
+  }
+  @media (max-width:900px){
+    .roles{grid-template-columns:1fr}
+    .hero h1{font-size:32px}
+    .app-header{flex-wrap:wrap;height:auto;padding:8px 12px;gap:8px}
+    .role-badge,.user-badge,.project-name{font-size:11px;padding:4px 9px}
+    .snapshot-dropdown,.online-dropdown,.branch-dropdown{min-width:280px;right:-8px}
+  }
+</style>
+</head>
+<body>
+
+<section id="screen-role" class="screen active">
+  <div class="hero">
+    <div class="hero-brand">
+      <div class="hero-logo">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      </div>
+      <h1>CodeSync</h1>
+    </div>
+    <p>Komanda üçün real-time fayl sinxronizasiyası və versiya nəzarəti</p>
+    <div class="roles">
+      <button class="role-btn" data-role="server">
+        <div class="role-icon">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <div class="role-title">Server</div>
+        <div class="role-desc">Fayl idarəçiliyi, commit, branch və snapshot. Layihə adını buradan təyin edin.</div>
+      </button>
+      <button class="role-btn" data-role="spoke">
+        <div class="role-icon">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><line x1="2" y1="20" x2="22" y2="20"/></svg>
+        </div>
+        <div class="role-title">Spoke</div>
+        <div class="role-desc">Serverə qoşulub sinxronlaşdır. Commit tələb edə bilər, amma edə bilməz.</div>
+      </button>
+    </div>
+  </div>
+</section>
+
+<section id="screen-setup" class="screen">
+  <div class="card">
+    <h2>
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span id="setup-title-text">Setup</span>
+    </h2>
+
+    <div class="field">
+      <label>
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        İstifadəçi adı
+      </label>
+      <input id="username" type="text" placeholder="mes. ali-hesenli" maxlength="32" spellcheck="false" autocomplete="username">
+      <div class="hint">Bu ad bütün fayl əməliyyatlarında göstəriləcək. Komanda üzvləri arasında unikal olmalıdır.</div>
+    </div>
+
+    <div class="field">
+      <label>
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        WebSocket URL
+      </label>
+      <input id="ws-url" type="text" placeholder="ws://localhost:3000/ws" spellcheck="false" autocomplete="off">
+      <div class="hint" id="url-hint"></div>
+    </div>
+
+    <div class="fsa-warning" id="fsa-warning" style="display:none">
+      <h4>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        File System Access API əlçatan deyil
+      </h4>
+      <p><b>Səbəb:</b> <span id="fsa-reason">—</span></p>
+      <p><b>Həll yolları (tövsiyə olunan):</b></p>
+      <ol>
+        <li><b>HTTPS istifadə edin</b> — <code>CODESYNC_HTTPS=1 node server.js</code> ilə self-signed cert, sonra brauzerdə "Advanced - Proceed" klikləyin</li>
+        <li><b>cloudflared tunnel</b> — <code>cloudflared tunnel --url http://localhost:3000</code></li>
+        <li><b>localhost</b> üzərindən açın (yalnız server maşınında)</li>
+        <li>Chrome flag: <code>chrome://flags/#unsafely-treat-insecure-origin-as-secure</code></li>
+      </ol>
+      <p style="margin-top:12px;padding:10px;background:var(--yellow-bg);border:1px solid var(--yellow-border);border-radius:4px;color:var(--yellow);font-size:11.5px">
+        <b>Diqqet: Virtual rejim yalnız oxuma üçündür</b> — fayllar yaddaşda saxlanılır, diskə yazılmır. Real-time sinxronizasiya üçün yuxarıdakı 1 və ya 2-ci variantı seçin.
+      </p>
+      <button class="btn-secondary" id="btn-fsa-retry">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+        Yenidən yoxla
+      </button>
+      <button class="btn-secondary" id="btn-virtual-mode">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Virtual rejim (yalnız oxuma - import)
+      </button>
+    </div>
+
+    <div class="field" id="folder-field">
+      <label>
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        Sinxronlaşdırılacaq qovluq
+      </label>
+      <button id="btn-pick-folder" class="folder-btn">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        <span id="folder-btn-text">Qovluq seç</span>
+      </button>
+      <input type="file" id="file-input" webkitdirectory multiple style="display:none">
+      <div class="hint">Bu qovluqdakı bütün <b>text</b> fayllar sinxronlaşacaq. <b>node_modules</b>, <b>.git</b>, <b>_snapshots</b>, <b>_vcs</b>, <b>_conflicts</b> və binary fayllar ötürülür.</div>
+    </div>
+
+    <div class="field" id="snapshot-hint-field" style="display:none">
+      <label>
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        Snapshot və VCS
+      </label>
+      <div class="hint" style="margin-top:0;padding:11px 13px;background:var(--yellow-bg);border:1px solid var(--yellow-border);border-radius:var(--radius-sm);color:var(--text-dim)">
+        Snapshotlar broker tərəfindən <b>_snapshots/</b> qovluğunda, commitlər isə <b>_vcs/</b> qovluğunda saxlanılır. Qoşulduqdan sonra commit edə, branch yarada və tarixçəni görə bilərsiniz.
+      </div>
+    </div>
+
+    <button id="btn-connect" class="btn-primary">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      <span id="btn-connect-text">Qoşul və Sinxronlaşdır</span>
+    </button>
+    <div id="setup-error" class="error"></div>
+  </div>
+</section>
+
+<section id="screen-main" class="screen">
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-logo">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      </div>
+      <span>CodeSync</span>
+    </div>
+    <div class="project-name" id="project-name" title="Layihə adı">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      <span id="project-name-text">—</span>
+    </div>
+
+    <div class="branch-wrap" id="branch-wrap">
+      <button class="branch-badge" id="branch-badge" title="Aktiv branch">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+        <span class="branch-label" id="branch-name">main</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="branch-dropdown" id="branch-dropdown" hidden>
+        <div class="branch-dropdown-header">
+          <span>Branches</span>
+          <span class="online-count-badge" id="branch-count-badge">0</span>
+        </div>
+        <ul class="branch-list" id="branch-list"></ul>
+        <div class="branch-actions" id="branch-actions">
+          <button id="btn-new-branch">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            Yeni branch yarat
+          </button>
+          <button id="btn-merge-branch">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></svg>
+            Merge
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="role-badge" id="role-badge">—</div>
+    <div class="user-badge" id="user-badge" title="Cari istifadəçi">
+      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span id="user-badge-text">—</span>
+    </div>
+    <div class="header-spacer"></div>
+    <div class="sync-mode" id="sync-mode" title="Sinxronizasiya rejimi">Full</div>
+
+    <button class="btn-commit" id="btn-commit" style="display:none" title="Commit yarat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="1.05" y1="12" x2="7" y2="12"/><line x1="17.01" y1="12" x2="22.96" y2="12"/></svg>
+      <span>Commit</span>
+    </button>
+
+    <div class="snapshot-wrap" id="snapshot-wrap">
+      <button class="snapshot-badge" id="snapshot-badge" title="Snapshot tarixçəsi" aria-haspopup="true" aria-expanded="false">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <span>Snapshots: <span id="snapshot-count">0</span></span>
+      </button>
+      <div class="snapshot-dropdown" id="snapshot-dropdown" hidden role="menu">
+        <div class="snapshot-dropdown-header">
+          <span>Snapshot tarixçəsi</span>
+          <div class="snapshot-header-actions">
+            <button class="btn-mini" id="btn-manual-snapshot" title="İndi snapshot yarat" style="display:none">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+              Yarat
+            </button>
+            <button class="btn-mini" id="btn-snapshot-refresh" title="Yenilə">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+            </button>
+          </div>
+        </div>
+        <ul class="snapshot-list" id="snapshot-list"></ul>
+      </div>
+    </div>
+
+    <div class="client-count-wrap">
+      <button class="client-count" id="client-count" title="Onlayn istifadəçilər" aria-haspopup="true" aria-expanded="false">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span id="client-count-text">0</span>
+      </button>
+      <div class="online-dropdown" id="online-dropdown" hidden role="menu">
+        <div class="online-dropdown-header">
+          <span>Onlayn istifadəçilər</span>
+          <span class="online-count-badge" id="online-count-badge">0</span>
+        </div>
+        <ul class="online-list" id="online-list"></ul>
+      </div>
+    </div>
+
+    <div class="conn-status" id="conn-status">offline</div>
+    <button id="btn-disconnect" class="btn-ghost">Ayır</button>
+  </header>
+
+  <div class="virtual-banner" id="virtual-banner" role="status">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    <span><b>Virtual rejim (yalnız oxuma):</b> fayllar yalnız brauzer yaddaşında — diskə yazılmır. Səhifə yeniləyəndə yenidən import lazımdır.</span>
+  </div>
+
+  <div class="main-layout">
+    <aside class="panel tree-panel" id="tree-panel">
+      <div class="panel-header">
+        <span class="panel-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          Fayl ağacı
+        </span>
+        <span class="count" id="file-count">0</span>
+      </div>
+      <div class="search-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input id="tree-search" type="search" placeholder="Fayl axtar…" spellcheck="false" autocomplete="off">
+        <button id="btn-clear-search" class="search-clear" title="Təmizlə">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="bulk-toolbar" id="bulk-toolbar" hidden>
+        <span class="bulk-info"><strong id="bulk-count">0</strong> fayl seçildi</span>
+        <div class="bulk-actions">
+          <button class="btn-tiny" id="btn-select-all">Hamısı</button>
+          <button class="btn-tiny danger" id="btn-delete-selected" style="display:none">Sil</button>
+          <button class="btn-tiny" id="btn-clear-selection">Ləğv</button>
+        </div>
+      </div>
+      <div class="tree" id="tree" role="tree"></div>
+    </aside>
+
+    <main class="panel viewer-panel">
+      <div class="viewer-header">
+        <div class="viewer-path-wrap">
+          <span class="path" id="viewer-path"></span>
+          <span class="path-meta" id="viewer-meta"></span>
+        </div>
+        <div class="viewer-actions" id="viewer-actions" style="display:none">
+          <button class="btn-icon" id="btn-refresh" title="Yenilə">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+          </button>
+          <button class="btn-icon" id="btn-copy" title="Kopyala">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+          <button class="btn-icon" id="btn-download" title="Yüklə">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="viewer-body" id="viewer-body">
+        <div class="viewer-empty" id="viewer-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          <p>Fayl seçilməyib</p>
+          <small>Sol paneldən fayl seçin və ya axtarış edin</small>
+        </div>
+        <div class="viewer-message" id="viewer-message"></div>
+        <div class="code-view" id="code-view">
+          <div class="code-gutter" id="code-gutter" aria-hidden="true"></div>
+          <pre class="code-content" id="code-content"></pre>
+        </div>
+        <div class="image-view" id="image-view">
+          <div class="image-wrapper">
+            <img id="image-preview" alt="Fayl önizləməsi">
+          </div>
+          <div class="image-info" id="image-info"></div>
+        </div>
+        <div class="conflict-view" id="conflict-view">
+          <div class="conflict-banner" id="conflict-banner">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span id="conflict-banner-text">Konflikt aşkarlanıb — hansı versiyanı saxlamaq istədiyinizi seçin</span>
+          </div>
+          <div class="conflict-panes">
+            <div class="conflict-pane">
+              <div class="conflict-pane-header server">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                Server versiyası
+              </div>
+              <pre class="conflict-pane-content" id="conflict-server"></pre>
+            </div>
+            <div class="conflict-pane">
+              <div class="conflict-pane-header local">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Lokal versiya (sizin)
+              </div>
+              <pre class="conflict-pane-content" id="conflict-local"></pre>
+            </div>
+          </div>
+          <div class="conflict-actions">
+            <button class="btn-keep-server" id="btn-keep-server">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+              Serveri saxla
+            </button>
+            <button class="btn-keep-local" id="btn-keep-local">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+              Lokalı saxla və göndər
+            </button>
+            <button class="btn-merge" id="btn-manual-merge">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="15" y2="16"/></svg>
+              Manual birləşdir
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="panel log-panel">
+      <div class="panel-header">
+        <div class="panel-tabs">
+          <button class="panel-tab active" data-tab="activity">Aktivlik</button>
+          <button class="panel-tab" data-tab="history">Tarixçe <span class="tab-badge" id="history-badge">0</span></button>
+        </div>
+        <button class="btn-icon-sm" id="btn-clear-log" title="Təmizlə">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="log" id="log" data-tab-content="activity">
+        <div class="log-empty">Heç bir hadisə yoxdur</div>
+      </div>
+      <div class="history" id="history" data-tab-content="history" hidden>
+        <div class="history-controls">
+          <label><input type="checkbox" id="history-show-auto"> Auto göstər</label>
+          <button class="btn-tiny" id="btn-history-refresh">Yenilə</button>
+        </div>
+        <div class="history-list" id="history-list">
+          <div class="history-empty">Tarixçe yüklənir…</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<div id="file-context-menu" class="context-menu" role="menu"></div>
+
+<div class="modal" id="commit-modal" hidden role="dialog" aria-modal="true">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="1.05" y1="12" x2="7" y2="12"/><line x1="17.01" y1="12" x2="22.96" y2="12"/></svg>
+        Commit yarat
+      </h3>
+      <button class="modal-close" data-close="commit-modal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="field-row">
+        <label>Branch</label>
+        <input type="text" id="commit-branch" readonly>
+      </div>
+      <div class="field-row">
+        <label>Mesaj</label>
+        <textarea id="commit-message" placeholder="Nə dəyişdi? (məs. login səhifəsi + API inteqrasiyası)" maxlength="200"></textarea>
+        <div class="hint-inline">Mesaj boş ola bilməz</div>
+      </div>
+      <div class="field-row">
+        <label>Dəyişikliklər (<span id="commit-change-count">0</span>)</label>
+        <div class="change-list" id="commit-change-list">
+          <div class="change-empty">Dəyişiklik yoxdur</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" data-close="commit-modal">Ləğv et</button>
+      <button class="btn-save" id="btn-do-commit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+        Commit et
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="branch-create-modal" hidden role="dialog" aria-modal="true">
+  <div class="modal-content" style="max-width:520px">
+    <div class="modal-header">
+      <h3>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+        Yeni branch
+      </h3>
+      <button class="modal-close" data-close="branch-create-modal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="field-row">
+        <label>Ad</label>
+        <input type="text" id="branch-create-name" placeholder="feature-oauth" maxlength="64" spellcheck="false">
+        <div class="hint-inline">Yalnız hərf, rəqəm, nöqtə, alt xətt, defis (2-64 simvol)</div>
+      </div>
+      <div class="field-row">
+        <label>Haradan</label>
+        <select id="branch-create-from"></select>
+      </div>
+      <div class="field-row">
+        <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:12.5px">
+          <input type="checkbox" id="branch-create-autocommit" checked>
+          Cari dəyişikliklər avtomatik commit edilsin
+        </label>
+        <div class="hint-inline">Tövsiyə olunur — cari vəziyyət itməz</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" data-close="branch-create-modal">Ləğv et</button>
+      <button class="btn-save" id="btn-do-create-branch">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+        Yarat
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="branch-merge-modal" hidden role="dialog" aria-modal="true">
+  <div class="modal-content" style="max-width:760px">
+    <div class="modal-header">
+      <h3>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></svg>
+        <span id="branch-merge-title">Merge</span>
+      </h3>
+      <button class="modal-close" data-close="branch-merge-modal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="field-row" id="merge-preview-loading" style="display:none">
+        <div class="change-empty">Hesablanır…</div>
+      </div>
+      <div class="field-row" id="merge-preview-from" style="display:none">
+        <label>Haradan (from)</label>
+        <select id="merge-from-select"></select>
+      </div>
+      <div class="field-row" id="merge-preview-to" style="display:none">
+        <label>Haraya (to)</label>
+        <select id="merge-to-select"></select>
+      </div>
+      <div id="merge-preview-body" style="display:none">
+        <div class="merge-section" id="merge-section-auto" style="display:none">
+          <h4>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+            Avtomatik birləşəcək (<span id="merge-auto-count">0</span>)
+          </h4>
+          <div class="merge-auto-list" id="merge-auto-list"></div>
+        </div>
+        <div class="merge-section" id="merge-section-conflicts" style="display:none">
+          <h4>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Konflikt (<span id="merge-conflict-count">0</span>)
+          </h4>
+          <div id="merge-conflict-list"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" data-close="branch-merge-modal">Ləğv et</button>
+      <button class="btn-save" id="btn-do-merge" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+        Merge et
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="commit-details-modal" hidden role="dialog" aria-modal="true">
+  <div class="modal-content" style="max-width:640px">
+    <div class="modal-header">
+      <h3>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="1.05" y1="12" x2="7" y2="12"/><line x1="17.01" y1="12" x2="22.96" y2="12"/></svg>
+        Commit detalları
+      </h3>
+      <button class="modal-close" data-close="commit-details-modal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="commit-details-body"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" data-close="commit-details-modal">Bağla</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="file-merge-modal" hidden role="dialog" aria-modal="true">
+  <div class="modal-content" style="max-width:900px">
+    <div class="modal-header">
+      <h3>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg>
+        Manual birləşdirmə:
+        <span class="merge-modal-filename" id="merge-filename" style="font-family:var(--mono);font-size:12px;color:var(--muted);font-weight:400"></span>
+      </h3>
+      <button class="modal-close" data-close="file-merge-modal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" style="padding:0;flex:1;overflow:hidden;display:flex;min-height:0">
+      <textarea id="merge-textarea" spellcheck="false" style="flex:1;background:var(--bg);border:none;color:var(--text);padding:16px 20px;font-family:var(--mono);font-size:12.5px;line-height:1.6;resize:none;outline:none;min-height:300px;white-space:pre;overflow:auto;tab-size:2"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" id="merge-cancel">Ləğv</button>
+      <button class="btn-save" id="merge-save">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+        Yadda saxla və göndər
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toasts" aria-live="polite"></div>
+
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════════════
+   SVG icons
+   ═══════════════════════════════════════════════════════════════════ */
+const ICONS = {
+  folder: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>',
+  file: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+  chevronRight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>',
+  chevronDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>',
+  success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
+  error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+  warn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>',
+  filesEmpty: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+  eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+  link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
+  upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
+  image: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
+  branch: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>',
+  commit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="1.05" y1="12" x2="7" y2="12"/><line x1="17.01" y1="12" x2="22.96" y2="12"/></svg>',
+  restore: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+  minus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   Configuration
+   ═══════════════════════════════════════════════════════════════════ */
+const PROTOCOL_VERSION = 2;
+const CLIENT_CAPABILITIES = ['patch-v1', 'sha256-hash'];
+
+const IGNORE_DIRS = new Set([
+  'node_modules', '.git', 'dist', 'build', '.next', '.cache',
+  'target', 'out', 'coverage', '.vscode', '.idea', '__pycache__',
+  'venv', '.venv', '_snapshots', '_vcs', '_conflicts'
+]);
+
+const BINARY_EXTENSIONS = new Set([
+  'png','jpg','jpeg','gif','webp','bmp','ico','tif','tiff','psd','ai','sketch',
+  'pdf','zip','tar','gz','bz2','xz','rar','7z','exe','dll','so','dylib','bin','dat','db','sqlite','sqlite3',
+  'mp3','mp4','avi','mov','wmv','flv','mkv','webm','wav','ogg','flac','m4a','aac',
+  'ttf','otf','woff','woff2','eot',
+  'class','jar','war','o','a','lib','pyc','pyo','node','wasm',
+  'iso','img','dmg','vmdk','vdi','qcow2','apk','ipa','deb','rpm','msi','pkg'
+]);
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_LINE_NUMBERS = 10000;
+const MAX_HIGHLIGHT_SIZE = 200 * 1024;
+const USERNAME_KEY = 'codesync.username';
+const CONFLICT_DIR = '_conflicts';
+const RECENTLY_WRITTEN_TTL_MS = 5000;
+const POLL_INTERVAL_MS = 1000;
+const RECONNECT_BASE_DELAY_MS = 1000;
+const RECONNECT_MAX_DELAY_MS = 30000;
+const INIT_TIMEOUT_MS = 15000;
+const INIT_BULK_SEND_THRESHOLD = 20;
+
+const MAX_WS_BUFFERED_BYTES = 512 * 1024;
+const MAX_SEND_QUEUE_MSGS = 500;
+const MEMORY_CLEANUP_INTERVAL_MS = 30000;
+const LAST_EDIT_TTL_MS = 60 * 60 * 1000;
+const CONFLICT_PATH_TTL_MS = 24 * 60 * 60 * 1000;
+const PATCH_SIZE_RATIO = 0.7;
+
+const DIRTY_FILES_TIMEOUT_MS = 8000;
+const MERGE_PREVIEW_TIMEOUT_MS = 10000;
+const VCS_BUSY_RETRY_MAX = 5;
+const VCS_BUSY_RETRY_BASE_MS = 1000;
+const VCS_BUSY_RETRY_MAX_DELAY_MS = 15000;
+
+const IMAGE_MIMES = {
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+  gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml',
+  bmp: 'image/bmp', ico: 'image/x-icon',
+};
+
+const PRISM_LANG_MAP = {
+  js: 'javascript', mjs: 'javascript', cjs: 'javascript', jsx: 'jsx',
+  ts: 'typescript', tsx: 'tsx',
+  html: 'markup', htm: 'markup', xml: 'markup', svg: 'markup',
+  css: 'css', scss: 'scss', sass: 'scss',
+  json: 'json',
+  md: 'markdown', markdown: 'markdown',
+  yaml: 'yaml', yml: 'yaml',
+  py: 'python', go: 'go', rs: 'rust',
+  sh: 'bash', bash: 'bash', zsh: 'bash',
+  sql: 'sql',
+  diff: 'diff', patch: 'diff',
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   diff-match-patch init
+   ═══════════════════════════════════════════════════════════════════ */
+let dmp = null;
+try {
+  if (typeof diff_match_patch !== 'undefined') dmp = new diff_match_patch();
+} catch (e) { console.warn('diff-match-patch init failed:', e); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Helpers
+   ═══════════════════════════════════════════════════════════════════ */
+function hashContent(str) {
+  if (typeof str !== 'string') return '';
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (h2 >>> 0).toString(16).padStart(8,'0') + (h1 >>> 0).toString(16).padStart(8,'0');
+}
+
+function isBinaryPath(path) {
+  const ext = (path.split('.').pop() || '').toLowerCase();
+  return BINARY_EXTENSIONS.has(ext);
+}
+function isBinaryContent(content) {
+  if (typeof content !== 'string') return true;
+  const sample = content.slice(0, 8000);
+  return sample.includes('\u0000');
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   State
+   ═══════════════════════════════════════════════════════════════════ */
+const state = {
+  role: null,
+  username: '',
+
+  ws: null,
+  wsUrl: null,
+  intentionalDisconnect: false,
+  reconnectAttempts: 0,
+  reconnectTimer: null,
+  connectionRejected: false,
+
+  serverProtocolVersion: null,
+  serverCapabilities: new Set(),
+  serverSupportsPatches: false,
+
+  initBuffer: null,
+  hasReceivedInit: false,
+  finalizingInit: false,
+
+  dirHandle: null,
+  virtualFS: null,
+  projectName: null,
+  serverFiles: new Set(),
+
+  syncedContent: new Map(),
+  recentlyWritten: new Map(),
+  lastSnapshot: {},
+  conflictPaths: new Map(),
+  lastEdits: new Map(),
+
+  selectedFile: null,
+  selectedFiles: new Set(),
+  lastClickedPath: null,
+  collapsedDirs: new Set(),
+  searchQuery: '',
+  viewMode: 'empty',
+
+  mergeTargetPath: null,
+  mergeBackupPath: null,
+
+  clientId: null,
+  clientCount: 0,
+  onlineUsers: [],
+  snapshotCount: 0,
+
+  pollTimer: null,
+  cleanupTimer: null,
+
+  vcs: {
+    activeBranch: 'main',
+    branches: [],
+    recentCommits: [],
+    history: null,
+    showAuto: false,
+    busy: false,
+    busyTimer: null,
+    pendingMerge: null,
+  },
+
+  activeTab: 'activity',
+};
+
+let pendingInitResolve = null;
+let pendingInitReject = null;
+let currentImageUrl = null;
+const sendQueue = [];
+let flushScheduled = false;
+
+/* Pending dirty-files request (commit modal) */
+let pendingDirtyRequest = null;
+
+/* VCS busy retry map: path -> { attempts, timer } */
+const vcsBusyRetries = new Map();
+
+/* Merge preview timeout */
+let mergePreviewTimer = null;
+
+/* ═══════════════════════════════════════════════════════════════════
+   DOM helpers
+   ═══════════════════════════════════════════════════════════════════ */
+const $ = (id) => document.getElementById(id);
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+function formatBytes(n) {
+  if (n == null) return '';
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+  return (n / (1024 * 1024)).toFixed(2) + ' MB';
+}
+function formatTime(ts) { return new Date(ts).toLocaleTimeString('en-GB', { hour12: false }); }
+function formatDateTime(ts) { return new Date(ts).toLocaleString('az-AZ', { hour12: false }); }
+function relativeTime(ts) {
+  const diff = Date.now() - ts;
+  if (diff < 60000) return 'indi';
+  if (diff < 3600000) return Math.floor(diff / 60000) + ' deq əvvəl';
+  if (diff < 86400000) return Math.floor(diff / 3600000) + ' saat əvvəl';
+  return Math.floor(diff / 86400000) + ' gün əvvəl';
+}
+function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id)); }
+
+function updateConn(status) {
+  const el = $('conn-status');
+  if (status === 'online') { el.textContent = 'online'; el.className = 'conn-status ok'; }
+  else if (status === 'reconnecting') { el.textContent = 'yenidən qoşulur…'; el.className = 'conn-status warn'; }
+  else { el.textContent = 'offline'; el.className = 'conn-status err'; }
+}
+
+function updateSyncModeBadge() {
+  const el = $('sync-mode');
+  if (!el) return;
+  if (state.serverSupportsPatches) {
+    el.textContent = 'Patch'; el.classList.add('patch');
+    el.title = 'Diff patch rejimi aktiv';
+  } else {
+    el.textContent = 'Full'; el.classList.remove('patch');
+    el.title = 'Tam fayl ötürülməsi';
+  }
+}
+
+function updateVirtualBanner() {
+  const banner = $('virtual-banner');
+  if (!banner) return;
+  banner.classList.toggle('visible', !!state.virtualFS);
+}
+
+function isRecentlyWritten(path) {
+  const rec = state.recentlyWritten.get(path);
+  if (!rec) return false;
+  if (Date.now() > rec.expiresAt) { state.recentlyWritten.delete(path); return false; }
+  return true;
+}
+function getRecentlyWritten(path) {
+  const rec = state.recentlyWritten.get(path);
+  if (!rec) return null;
+  if (Date.now() > rec.expiresAt) { state.recentlyWritten.delete(path); return null; }
+  return rec;
+}
+function markRecentlyWritten(path, content) {
+  state.recentlyWritten.set(path, { content, expiresAt: Date.now() + RECENTLY_WRITTEN_TTL_MS });
+}
+
+function defaultWsUrl(role) {
+  if (location.protocol.startsWith('http')) {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${proto}//${location.host}/ws`;
+  }
+  return role === 'server' ? 'ws://localhost:3000/ws' : 'ws://192.168.1.100:3000/ws';
+}
+
+function fileExtClass(name) {
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  const map = { js:'js',mjs:'js',cjs:'js',ts:'ts',tsx:'ts',jsx:'js',html:'html',htm:'html',
+    css:'css',scss:'css',sass:'css',less:'css',json:'json',md:'md',markdown:'md',
+    py:'py',go:'go',rs:'rs',sh:'sh',bash:'sh' };
+  return map[ext] ? 'ext-' + map[ext] : '';
+}
+
+function imageMime(path) {
+  const ext = (path.split('.').pop() || '').toLowerCase();
+  return IMAGE_MIMES[ext] || null;
+}
+
+function prismLanguage(path) {
+  const ext = (path.split('.').pop() || '').toLowerCase();
+  return PRISM_LANG_MAP[ext] || null;
+}
+
+function setVcsBusy(busy) {
+  state.vcs.busy = busy;
+  if (busy) {
+    clearTimeout(state.vcs.busyTimer);
+    state.vcs.busyTimer = setTimeout(() => { setVcsBusy(false); }, 30000);
+  } else {
+    clearTimeout(state.vcs.busyTimer);
+    state.vcs.busyTimer = null;
+  }
+  updateVcsButtons();
+}
+
+function updateVcsButtons() {
+  const busy = state.vcs.busy;
+  const isServer = state.role === 'server';
+
+  const commitBtn = $('btn-commit');
+  if (commitBtn) commitBtn.disabled = !isServer || busy;
+
+  const newBranchBtn = $('btn-new-branch');
+  if (newBranchBtn) newBranchBtn.disabled = busy || !isServer;
+
+  const mergeBranchBtn = $('btn-merge-branch');
+  if (mergeBranchBtn) mergeBranchBtn.disabled = busy || !isServer;
+
+  const manualSnapshotBtn = $('btn-manual-snapshot');
+  if (manualSnapshotBtn) manualSnapshotBtn.disabled = busy || !isServer;
+
+  const deleteSelectedBtn = $('btn-delete-selected');
+  if (deleteSelectedBtn) deleteSelectedBtn.disabled = busy || !isServer;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   FSA detection
+   ═══════════════════════════════════════════════════════════════════ */
+function checkFsaAvailability() {
+  if (typeof window.showDirectoryPicker !== 'function') {
+    return { ok: false, reason: 'Bu brauzer File System Access API-ni dəstəkləmir. Chrome və ya Edge istifadə edin.' };
+  }
+  if (!window.isSecureContext) {
+    return { ok: false, reason: 'Səhifə secure context-də deyil (HTTPS və ya localhost tələb olunur).' };
+  }
+  return { ok: true };
+}
+
+function showFsaWarning(reason) {
+  $('fsa-reason').textContent = reason;
+  $('fsa-warning').style.display = 'block';
+  $('folder-field').style.display = 'none';
+}
+
+function hideFsaWarning() {
+  $('fsa-warning').style.display = 'none';
+  $('folder-field').style.display = 'block';
+}
+
+$('btn-fsa-retry').addEventListener('click', () => {
+  const check = checkFsaAvailability();
+  if (check.ok) {
+    hideFsaWarning();
+    toast('FSA artıq əlçatandır', 'success');
+  } else {
+    $('fsa-reason').textContent = check.reason;
+    toast('Hələ də əlçatan deyil', 'error');
+  }
+});
+
+$('btn-virtual-mode').addEventListener('click', () => {
+  state.virtualFS = new Map();
+  state.dirHandle = null;
+  hideFsaWarning();
+  $('folder-btn-text').textContent = 'Virtual FS - faylları import edin';
+  $('btn-pick-folder').classList.add('selected');
+  toast('Virtual rejim aktivdir - yalnız oxuma, diskə yazılmır', 'info', 6000);
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   Log + Toast
+   ═══════════════════════════════════════════════════════════════════ */
+function log(msg, type = 'info', username = null) {
+  const el = $('log');
+  const empty = el.querySelector('.log-empty');
+  if (empty) empty.remove();
+
+  const d = document.createElement('div');
+  d.className = 'log-item ' + type;
+  const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
+  const userHtml = username ? `<span class="log-user">${escapeHtml(username)}</span>` : '';
+  d.innerHTML = `<span class="log-dot"></span><span class="time">${time}</span>${userHtml}<span class="msg">${escapeHtml(msg)}</span>`;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+  while (el.children.length > 300) el.removeChild(el.firstChild);
+}
+
+function toast(msg, type = 'info', duration = 3500) {
+  const icon = ICONS[type] || ICONS.info;
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.innerHTML = `${icon}<span>${escapeHtml(msg)}</span>`;
+  $('toasts').appendChild(el);
+  setTimeout(() => {
+    el.classList.add('toast-out');
+    setTimeout(() => el.remove(), 260);
+  }, duration);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Username
+   ═══════════════════════════════════════════════════════════════════ */
+function loadUsername() {
+  try {
+    const saved = localStorage.getItem(USERNAME_KEY);
+    if (saved) $('username').value = saved;
+  } catch {}
+}
+
+function saveUsername(name) {
+  state.username = name;
+  try { localStorage.setItem(USERNAME_KEY, name); } catch {}
+  $('user-badge-text').textContent = name;
+}
+
+function validateUsername(raw) {
+  const trimmed = String(raw || '').trim();
+  if (!trimmed) return { ok: false, error: 'İstifadəçi adı boş ola bilməz.' };
+  if (trimmed.length > 32) return { ok: false, error: 'İstifadəçi adı maksimum 32 simvol ola bilər.' };
+  if (!/^[\p{L}\p{N}\s._-]+$/u.test(trimmed)) {
+    return { ok: false, error: 'Yalnız hərf, rəqəm, boşluq, nöqtə, alt xətt və defis.' };
+  }
+  return { ok: true, value: trimmed };
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Clipboard
+   ═══════════════════════════════════════════════════════════════════ */
+async function copyToClipboard(text) {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); ta.remove();
+      return true;
+    } catch { return false; }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Role selection
+   ═══════════════════════════════════════════════════════════════════ */
+document.querySelectorAll('.role-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.role = btn.dataset.role;
+    const isServer = state.role === 'server';
+    $('setup-title-text').textContent = isServer ? 'Server Setup' : 'Spoke Setup';
+    $('ws-url').value = defaultWsUrl(state.role);
+    $('url-hint').textContent = isServer
+      ? 'Broker bu kompüterdə işləməlidir: node server.js'
+      : 'Server kompüterinin IP-sini yaz (məs. ws://192.168.1.100:3000/ws)';
+    $('snapshot-hint-field').style.display = isServer ? 'block' : 'none';
+    $('setup-error').textContent = '';
+
+    const check = checkFsaAvailability();
+    if (!check.ok) {
+      showFsaWarning(check.reason);
+    } else {
+      hideFsaWarning();
+    }
+
+    showScreen('screen-setup');
+    if (!$('username').value) $('username').focus();
+    else $('ws-url').focus();
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   Folder picker
+   ═══════════════════════════════════════════════════════════════════ */
+$('btn-pick-folder').addEventListener('click', async () => {
+  if (state.virtualFS) {
+    $('file-input').click();
+    return;
+  }
+
+  const check = checkFsaAvailability();
+  if (!check.ok) {
+    showFsaWarning(check.reason);
+    return;
+  }
+
+  try {
+    const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    const perm = await handle.requestPermission({ mode: 'readwrite' });
+    if (perm !== 'granted') throw new Error('Qovluğa giriş icazəsi verilmədi.');
+    state.dirHandle = handle;
+    $('folder-btn-text').textContent = handle.name;
+    $('btn-pick-folder').classList.add('selected');
+    $('setup-error').textContent = '';
+    toast(`Qovluq seçildi: ${handle.name}`, 'success');
+  } catch (e) {
+    if (e.name !== 'AbortError') $('setup-error').textContent = e.message;
+  }
+});
+
+$('file-input').addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files || []);
+  if (!files.length) return;
+  if (!state.virtualFS) state.virtualFS = new Map();
+
+  let imported = 0, skipped = 0;
+  for (const file of files) {
+    const path = file.webkitRelativePath || file.name;
+    if (isBinaryPath(path)) { skipped++; continue; }
+    try {
+      const content = await file.text();
+      if (isBinaryContent(content)) { skipped++; continue; }
+      state.virtualFS.set(path, content);
+      state.lastSnapshot[path] = { content, mtime: file.lastModified, size: file.size };
+      imported++;
+    } catch { skipped++; }
+  }
+
+  $('folder-btn-text').textContent = `Virtual FS (${state.virtualFS.size} fayl)`;
+  $('btn-pick-folder').classList.add('selected');
+  toast(`${imported} fayl import edildi${skipped ? `, ${skipped} skip` : ''}`, 'success', 5000);
+  e.target.value = '';
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   Connect flow
+   ═══════════════════════════════════════════════════════════════════ */
+$('btn-connect').addEventListener('click', async () => {
+  const userCheck = validateUsername($('username').value);
+  if (!userCheck.ok) { $('setup-error').textContent = userCheck.error; $('username').focus(); return; }
+
+  const url = $('ws-url').value.trim();
+  if (!url) { $('setup-error').textContent = 'WebSocket URL boşdur.'; return; }
+
+  if (!state.dirHandle && !state.virtualFS) {
+    $('setup-error').textContent = 'Əvvəlcə qovluq seçin və ya virtual rejimə keçin.';
+    return;
+  }
+
+  $('setup-error').textContent = '';
+  const btn = $('btn-connect');
+  btn.disabled = true;
+  $('btn-connect-text').textContent = 'Qoşulur…';
+
+  saveUsername(userCheck.value);
+  state.wsUrl = url;
+  state.intentionalDisconnect = false;
+  state.connectionRejected = false;
+  state.reconnectAttempts = 0;
+  state.hasReceivedInit = false;
+  state.initBuffer = null;
+  state.serverProtocolVersion = null;
+  state.serverCapabilities = new Set();
+  state.serverSupportsPatches = false;
+
+  try {
+    await openWebSocket(url);
+    await waitForInitOrError(INIT_TIMEOUT_MS);
+
+    const isServer = state.role === 'server';
+    const badge = $('role-badge');
+    badge.textContent = isServer ? 'Server' : 'Spoke';
+    badge.className = 'role-badge ' + state.role;
+    if (isServer) {
+      $('snapshot-badge').classList.add('visible');
+      $('btn-delete-selected').style.display = '';
+      $('btn-manual-snapshot').style.display = '';
+      $('btn-commit').style.display = '';
+      $('branch-badge').classList.remove('spoke');
+    } else {
+      $('btn-commit').style.display = 'none';
+      $('branch-badge').classList.add('spoke');
+    }
+    updateVcsButtons();
+    showScreen('screen-main');
+    updateVirtualBanner();
+    log(`Broker-ə qoşuldu: ${url}`, 'success', state.username);
+    toast('Broker-ə qoşuldu', 'success');
+
+    if (state.virtualFS) {
+      log('Virtual rejim aktivdir - fayllar yalnız yaddaşdadır', 'warn');
+    }
+
+    startMemoryCleanup();
+    renderBranchBadge();
+    renderHistory();
+
+    btn.disabled = false;
+    $('btn-connect-text').textContent = 'Qoşul və Sinxronlaşdır';
+    updateSyncModeBadge();
+  } catch (e) {
+    $('setup-error').textContent = 'Qoşulma alınmadı: ' + e.message;
+    btn.disabled = false;
+    $('btn-connect-text').textContent = 'Qoşul və Sinxronlaşdır';
+    toast('Qoşulma alınmadı', 'error');
+    state.intentionalDisconnect = true;
+    if (state.ws) {
+      try { state.ws.close(); } catch {}
+      state.ws = null;
+    }
+    state.initBuffer = null;
+    state.hasReceivedInit = false;
+    updateConn('offline');
+  }
+});
+
+function waitForInitOrError(timeoutMs) {
+  if (state.hasReceivedInit) return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      pendingInitResolve = null;
+      pendingInitReject = null;
+      reject(new Error('Server init göndərmədi (timeout).'));
+    }, timeoutMs);
+
+    pendingInitResolve = () => {
+      clearTimeout(timer);
+      pendingInitResolve = null;
+      pendingInitReject = null;
+      resolve();
+    };
+    pendingInitReject = (err) => {
+      clearTimeout(timer);
+      pendingInitResolve = null;
+      pendingInitReject = null;
+      reject(err);
+    };
+  });
+}
+
+function openWebSocket(url) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let ws;
+    try { ws = new WebSocket(url); }
+    catch (e) { reject(new Error('Yanlış URL: ' + e.message)); return; }
+
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      try { ws.close(); } catch {}
+      reject(new Error('Timeout - broker cavab vermir (5s).'));
+    }, 5000);
+
+    ws.addEventListener('open', () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      state.ws = ws;
+      updateConn('online');
+      state.reconnectAttempts = 0;
+
+      state.serverProtocolVersion = null;
+      state.serverCapabilities = new Set();
+      state.serverSupportsPatches = false;
+
+      sendWs({
+        type: 'hello',
+        username: state.username,
+        role: state.role,
+        protocolVersion: PROTOCOL_VERSION,
+        capabilities: CLIENT_CAPABILITIES,
+      });
+      resolve();
+    });
+
+    ws.addEventListener('error', () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      updateConn('offline');
+      reject(new Error('WebSocket xətası. URL-ni və broker-in işlədiyini yoxlayın.'));
+    });
+
+    ws.addEventListener('message', (e) => {
+      let msg; try { msg = JSON.parse(e.data); } catch { return; }
+      handleMessage(msg).catch(err => console.error('message handler error', err));
+    });
+
+    ws.addEventListener('close', onWebSocketClose);
+  });
+}
+
+function onWebSocketClose() {
+  if (state.ws === null) return;
+  state.ws = null;
+  stopPolling();
+  state.initBuffer = null;
+  sendQueue.length = 0;
+  flushScheduled = false;
+
+  if (pendingDirtyRequest) {
+    clearTimeout(pendingDirtyRequest.timer);
+    pendingDirtyRequest = null;
+  }
+  for (const [, rec] of vcsBusyRetries) {
+    if (rec.timer) clearTimeout(rec.timer);
+  }
+  vcsBusyRetries.clear();
+  clearMergePreviewTimeout();
+
+  updateConn(state.intentionalDisconnect ? 'offline' : 'reconnecting');
+
+  if (state.intentionalDisconnect) { log('Broker bağlantısı bağlandı.', 'info'); return; }
+  if (state.connectionRejected) { log('Broker tərəfindən rədd edildi - yenidən qoşulma dayandırıldı.', 'error'); return; }
+
+  log('Broker bağlantısı kəsildi. Yenidən qoşulma…', 'error');
+  toast('Bağlantı kəsildi - yenidən qoşulur…', 'warn', 4000);
+  scheduleReconnect();
+}
+
+function scheduleReconnect() {
+  if (state.intentionalDisconnect || state.connectionRejected) return;
+  if (state.reconnectTimer) return;
+
+  state.reconnectAttempts++;
+  const baseDelay = Math.min(
+    RECONNECT_BASE_DELAY_MS * Math.pow(2, state.reconnectAttempts - 1),
+    RECONNECT_MAX_DELAY_MS
+  );
+  const delay = Math.floor(baseDelay * (1 + Math.random() * 0.3));
+
+  log(`Yenidən qoşulma cəhdi #${state.reconnectAttempts} (${delay}ms sonra)…`, 'warn');
+
+  state.reconnectTimer = setTimeout(async () => {
+    state.reconnectTimer = null;
+    if (state.intentionalDisconnect) return;
+    try {
+      await openWebSocket(state.wsUrl);
+      log('Yenidən qoşuldu', 'success');
+      toast('Broker-ə yenidən qoşuldu', 'success');
+    } catch (e) {
+      log(`Yenidən qoşulma uğursuz: ${e.message}`, 'warn');
+      scheduleReconnect();
+    }
+  }, delay);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   WebSocket send with backpressure
+   ═══════════════════════════════════════════════════════════════════ */
+function sendWs(msg) {
+  if (!state.ws || state.ws.readyState !== WebSocket.OPEN) return false;
+  if (state.ws.bufferedAmount > MAX_WS_BUFFERED_BYTES) {
+    if (sendQueue.length >= MAX_SEND_QUEUE_MSGS) {
+      sendQueue.shift();
+      log('Send növbəsi doludur', 'warn');
+    }
+    sendQueue.push(msg);
+    scheduleFlush();
+    return true;
+  }
+  try { state.ws.send(JSON.stringify(msg)); return true; }
+  catch (e) { console.error('send failed', e); return false; }
+}
+
+function scheduleFlush() {
+  if (flushScheduled) return;
+  flushScheduled = true;
+  setTimeout(flushSendQueue, 50);
+}
+
+function flushSendQueue() {
+  flushScheduled = false;
+  while (sendQueue.length > 0) {
+    if (!state.ws || state.ws.readyState !== WebSocket.OPEN) { sendQueue.length = 0; return; }
+    if (state.ws.bufferedAmount > MAX_WS_BUFFERED_BYTES) { scheduleFlush(); return; }
+    const msg = sendQueue.shift();
+    try { state.ws.send(JSON.stringify(msg)); } catch (e) { console.error('send failed', e); }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Dirty files request (server-authoritative)
+   ═══════════════════════════════════════════════════════════════════ */
+function requestDirtyFiles() {
+  return new Promise((resolve, reject) => {
+    if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
+      reject(new Error('Broker bağlantısı yoxdur'));
+      return;
+    }
+    if (pendingDirtyRequest) {
+      clearTimeout(pendingDirtyRequest.timer);
+      pendingDirtyRequest.reject(new Error('Yeni sorğu göndərildi'));
+      pendingDirtyRequest = null;
+    }
+    const timer = setTimeout(() => {
+      if (pendingDirtyRequest) {
+        pendingDirtyRequest = null;
+        reject(new Error('Dirty files sorğusu vaxt aşımı'));
+      }
+    }, DIRTY_FILES_TIMEOUT_MS);
+    pendingDirtyRequest = { resolve, reject, timer };
+    sendWs({ type: 'commit-request-dirty' });
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   VCS busy retry scheduler
+   ═══════════════════════════════════════════════════════════════════ */
+function scheduleVcsBusyRetry(path) {
+  const existing = vcsBusyRetries.get(path);
+  const attempts = existing ? existing.attempts + 1 : 1;
+
+  if (attempts > VCS_BUSY_RETRY_MAX) {
+    log(`${path}: VCS busy retry limiti aşıldı`, 'error', state.username);
+    toast(`${path} göndərilə bilmədi - server uzun müddət məşğuldur`, 'error', 5000);
+    if (existing && existing.timer) clearTimeout(existing.timer);
+    vcsBusyRetries.delete(path);
+    return;
+  }
+
+  if (existing && existing.timer) clearTimeout(existing.timer);
+
+  const delay = Math.min(
+    VCS_BUSY_RETRY_BASE_MS * Math.pow(2, attempts - 1),
+    VCS_BUSY_RETRY_MAX_DELAY_MS
+  );
+  log(`${path}: server məşğuldur - ${delay}ms sonra yenidən cəhd (${attempts}/${VCS_BUSY_RETRY_MAX})`, 'warn', state.username);
+
+  const timer = setTimeout(async () => {
+    const rec = vcsBusyRetries.get(path);
+    if (rec) rec.timer = null;
+    if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
+      vcsBusyRetries.delete(path);
+      return;
+    }
+    const content = await readLocal(path);
+    if (content === null) {
+      vcsBusyRetries.delete(path);
+      return;
+    }
+    sendFileUpdate(path, content, { forceFull: true });
+  }, delay);
+
+  vcsBusyRetries.set(path, { attempts, timer });
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Merge preview timeout
+   ═══════════════════════════════════════════════════════════════════ */
+function startMergePreviewTimeout() {
+  clearMergePreviewTimeout();
+  mergePreviewTimer = setTimeout(() => {
+    mergePreviewTimer = null;
+    if (!state.vcs.pendingMerge && !$('branch-merge-modal').hidden) {
+      toast('Merge preview vaxt aşımı', 'error', 5000);
+      log('Merge preview cavab vermir', 'error');
+      $('merge-preview-loading').style.display = 'none';
+      $('merge-preview-from').style.display = '';
+      $('merge-preview-to').style.display = '';
+      $('merge-preview-body').style.display = 'none';
+      const btn = $('btn-do-merge');
+      btn.disabled = false;
+      btn.textContent = 'Önizlə';
+    }
+  }, MERGE_PREVIEW_TIMEOUT_MS);
+}
+
+function clearMergePreviewTimeout() {
+  if (mergePreviewTimer) {
+    clearTimeout(mergePreviewTimer);
+    mergePreviewTimer = null;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   File update — patch-based when supported
+   ═══════════════════════════════════════════════════════════════════ */
+function sendFileUpdate(path, content, options = {}) {
+  const forceFull = !!options.forceFull;
+  const oldBase = state.syncedContent.get(path);
+
+  if (isBinaryPath(path) || isBinaryContent(content)) {
+    log(`${path} binary - sinxronlaşdırılmır`, 'warn');
+    return;
+  }
+
+  if (!forceFull && state.serverSupportsPatches && dmp) {
+    if (typeof oldBase === 'string' && oldBase !== content) {
+      try {
+        const patches = dmp.patch_make(oldBase, content);
+        if (patches.length > 0) {
+          const patchText = dmp.patch_toText(patches);
+          if (patchText.length < content.length * PATCH_SIZE_RATIO) {
+            markRecentlyWritten(path, content);
+            state.syncedContent.set(path, content);
+            state.lastEdits.set(path, { username: state.username, ts: Date.now() });
+
+            const saved = Math.round((1 - patchText.length / content.length) * 100);
+            sendWs({
+              type: 'file-patch',
+              path,
+              patch: patchText,
+              baseHash: hashContent(oldBase),
+              resultHash: hashContent(content),
+            });
+            log(`${path} patch göndərildi (~${saved}% qənaət)`, 'sync', state.username);
+            return;
+          }
+        }
+      } catch (e) { console.warn('patch creation failed', e); }
+    }
+  }
+
+  markRecentlyWritten(path, content);
+  state.syncedContent.set(path, content);
+  state.lastEdits.set(path, { username: state.username, ts: Date.now() });
+
+  sendWs({ type: 'file-update', path, content, hash: hashContent(content) });
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Message handling
+   ═══════════════════════════════════════════════════════════════════ */
+async function handleMessage(msg) {
+  switch (msg.type) {
+
+    case 'init-begin': {
+      handleServerHandshake(msg);
+      state.initBuffer = {
+        metadata: {
+          clientId: msg.clientId, clientCount: msg.clientCount,
+          projectName: msg.projectName, snapshotCount: msg.snapshotCount,
+          fileCount: msg.fileCount, vcs: msg.vcs,
+        },
+        files: [],
+      };
+      state.hasReceivedInit = true;
+      if (msg.vcs) applyVcsState(msg.vcs);
+      if (pendingInitResolve) pendingInitResolve();
+      $('tree').innerHTML = '<div class="tree-empty">Sinxronlaşdırılır…</div>';
+      log(`Init başladı: ${msg.fileCount} fayl gözlənilir`, 'sync');
+      break;
+    }
+
+    case 'init-files': {
+      if (!state.initBuffer) return;
+      const chunk = Array.isArray(msg.chunk) ? msg.chunk : [];
+      state.initBuffer.files.push(...chunk);
+      const received = state.initBuffer.files.length;
+      const total = state.initBuffer.metadata.fileCount || '?';
+      if (received === 1 || received === total || (received % 100 === 0)) {
+        log(`Init: ${received}/${total} fayl`, 'sync');
+      }
+      break;
+    }
+
+    case 'init-end': {
+      if (!state.initBuffer) return;
+      const buffer = state.initBuffer;
+      state.initBuffer = null;
+      await finalizeInit(buffer.files, buffer.metadata);
+      break;
+    }
+
+    case 'init': {
+      handleServerHandshake(msg);
+      state.hasReceivedInit = true;
+      if (msg.vcs) applyVcsState(msg.vcs);
+      if (pendingInitResolve) pendingInitResolve();
+      await finalizeInit(msg.files || [], msg);
+      break;
+    }
+
+    case 'role-assigned': {
+      const isServer = msg.role === 'server';
+      state.role = msg.role;
+      const badge = $('role-badge');
+      badge.textContent = isServer ? 'Server' : 'Spoke';
+      badge.className = 'role-badge ' + msg.role;
+      if (isServer) {
+        $('snapshot-badge').classList.add('visible');
+        $('btn-delete-selected').style.display = '';
+        $('btn-manual-snapshot').style.display = '';
+        $('btn-commit').style.display = '';
+        $('branch-badge').classList.remove('spoke');
+      } else {
+        $('snapshot-badge').classList.remove('visible');
+        $('btn-delete-selected').style.display = 'none';
+        $('btn-manual-snapshot').style.display = 'none';
+        $('btn-commit').style.display = 'none';
+        $('branch-badge').classList.add('spoke');
+      }
+      updateVcsButtons();
+      if (msg.reason) log(`Rol: ${msg.reason}`, 'warn');
+      break;
+    }
+
+    case 'project-name': {
+      state.projectName = msg.name;
+      $('project-name-text').textContent = msg.name;
+      log(`Layihə adı: ${msg.name}`, 'info');
+      break;
+    }
+
+    case 'client-count': {
+      updateOnlineUsers(msg.users || []);
+      break;
+    }
+
+    case 'file-update': {
+      await applyRemoteFileUpdate(msg.path, msg.content, msg.username || 'server');
+      break;
+    }
+
+    case 'file-patch': {
+      await handleRemotePatch(msg);
+      break;
+    }
+
+    case 'file-delete': {
+      const remoteUser = msg.username || 'server';
+      const isOwnRecentWrite = isRecentlyWritten(msg.path);
+      const existing = await readLocal(msg.path);
+      const base = state.syncedContent.get(msg.path);
+      const hasUnsyncedChanges = existing !== null && existing !== base;
+
+      if (existing !== null && hasUnsyncedChanges && !isOwnRecentWrite) {
+        const saved = await saveConflictBackup(msg.path, existing, remoteUser);
+        if (saved) {
+          log(`Silinmə: ${msg.path} - lokal versiya ${saved}-də saxlanıldı`, 'warn', remoteUser);
+          toast(`${msg.path} server tərəfindən silindi - lokal backup: ${saved}`, 'warn', 8000);
+        }
+      } else if (existing !== null) {
+        log(`Fayl server tərəfindən silindi: ${msg.path}`, 'info', remoteUser);
+      } else if (!isOwnRecentWrite) {
+        log(`Fayl server tərəfindən silindi: ${msg.path}`, 'warn', remoteUser);
+      }
+
+      state.serverFiles.delete(msg.path);
+      state.selectedFiles.delete(msg.path);
+      state.syncedContent.delete(msg.path);
+      state.recentlyWritten.delete(msg.path);
+      state.conflictPaths.delete(msg.path);
+      state.lastEdits.delete(msg.path);
+
+      if (state.selectedFile === msg.path) resetViewer();
+      await deleteLocal(msg.path);
+      renderTree();
+      updateBulkToolbar();
+      break;
+    }
+
+    case 'snapshot-created': {
+      state.snapshotCount = msg.snapshot.count;
+      $('snapshot-count').textContent = state.snapshotCount;
+      const badge = $('snapshot-badge');
+      badge.classList.remove('flash');
+      void badge.offsetWidth;
+      badge.classList.add('flash');
+      log(`Snapshot yaradıldı: ${msg.snapshot.name} (${msg.snapshot.fileCount} fayl)`, 'snapshot');
+      if (!$('snapshot-dropdown').hidden) loadSnapshots();
+      break;
+    }
+
+    case 'snapshot-restored': {
+      log(`Snapshot bərpa edildi: ${msg.name || '(naməlum)'}`, 'success');
+      toast(`Snapshot bərpa edildi: ${msg.name || ''}`, 'success', 5000);
+      break;
+    }
+
+    case 'filesystem-replaced': {
+      const files = Array.isArray(msg.files) ? msg.files : [];
+      log(`Fayl sistemi əvəz olunur: ${files.length} fayl`, 'sync');
+      await applyFilesystemReplaced(files);
+      toast(`Fayl sistemi bərpa edildi: ${files.length} fayl`, 'success', 5000);
+      break;
+    }
+
+    case 'conflict-detected': {
+      log(`Server konflikti: ${msg.path} - ${msg.winner} ${msg.loser} üzərinə yazdı`, 'conflict');
+      toast(`Konflikt aşkarlandı: ${msg.path}`, 'warn', 5000);
+      break;
+    }
+
+    case 'vcs-state': {
+      applyVcsState(msg.vcs);
+      renderBranchBadge();
+      renderHistory();
+      break;
+    }
+
+    case 'commit-created': {
+      handleCommitCreated(msg.commit);
+      break;
+    }
+
+    case 'branch-created': {
+      handleBranchCreated(msg.branch);
+      break;
+    }
+
+    case 'branch-switched': {
+      await handleBranchSwitched(msg);
+      break;
+    }
+
+    case 'branch-switch-started': {
+      log(`Branch dəyişdirilir: ${msg.from} → ${msg.to}`, 'vcs', state.username);
+      setVcsBusy(true);
+      break;
+    }
+
+    case 'branch-deleted': {
+      handleBranchDeleted(msg.name);
+      break;
+    }
+
+    case 'merge-preview': {
+      handleMergePreview(msg);
+      break;
+    }
+
+    case 'merge-started': {
+      log(`Merge başladı: ${msg.from} → ${msg.to}`, 'vcs');
+      break;
+    }
+
+    case 'merge-completed': {
+      await handleMergeCompleted(msg);
+      break;
+    }
+
+    case 'commit-restored': {
+      await handleCommitRestored(msg);
+      break;
+    }
+
+    case 'history': {
+      state.vcs.history = Array.isArray(msg.commits) ? msg.commits : [];
+      renderHistory();
+      break;
+    }
+
+    case 'dirty-files': {
+      if (pendingDirtyRequest) {
+        clearTimeout(pendingDirtyRequest.timer);
+        const resolve = pendingDirtyRequest.resolve;
+        pendingDirtyRequest = null;
+        resolve(Array.isArray(msg.files) ? msg.files : []);
+      }
+      break;
+    }
+
+    case 'error': {
+      if (!state.hasReceivedInit && pendingInitReject) {
+        if (msg.code === 'username-taken' || msg.code === 'invalid-username') {
+          pendingInitReject(new Error(msg.message));
+          return;
+        }
+      }
+      if (msg.code === 'too-many-connections') {
+        state.connectionRejected = true;
+        if (state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null; }
+        toast(`Server limiti: ${msg.message}`, 'error', 8000);
+        log(`Server limiti aşıldı - dayandırıldı: ${msg.message}`, 'error');
+        return;
+      }
+
+      if (msg.code === 'vcs-busy') {
+        if (msg.path) scheduleVcsBusyRetry(msg.path);
+        return;
+      }
+
+      if (msg.code === 'patch-rejected' || msg.code === 'patch-base-mismatch') {
+        if (msg.path) {
+          log(`${msg.path} üçün patch rədd edildi - tam content`, 'warn');
+          const local = await readLocal(msg.path);
+          if (local !== null) sendFileUpdate(msg.path, local, { forceFull: true });
+        }
+        return;
+      }
+
+      if (msg.code && msg.code.startsWith('vcs-')) {
+        setVcsBusy(false);
+        clearMergePreviewTimeout();
+        toast(`VCS: ${msg.message}`, 'error', 5000);
+        log(`VCS xətası: ${msg.message}`, 'error');
+        return;
+      }
+
+      const pathInfo = msg.path ? ` [${msg.path}]` : '';
+      log(`Broker xətası${pathInfo}: ${msg.message} (${msg.code})`, 'error');
+      toast(`Broker: ${msg.message}`, 'error', 5000);
+
+      if (msg.path && (msg.code === 'file-too-large' || msg.code === 'memory-limit')) {
+        state.syncedContent.delete(msg.path);
+        state.recentlyWritten.delete(msg.path);
+      }
+      break;
+    }
+
+    case 'pong': break;
+  }
+}
+
+async function applyFilesystemReplaced(files) {
+  const newPaths = new Set(files.map(f => f.path));
+
+  const toDelete = [];
+  for (const oldPath of state.serverFiles) {
+    if (!newPaths.has(oldPath)) toDelete.push(oldPath);
+  }
+  for (const p of toDelete) {
+    try { await deleteLocal(p); } catch {}
+  }
+  if (toDelete.length > 0) {
+    log(`${toDelete.length} fayl snapshot-da olmadığı üçün silindi`, 'warn');
+  }
+
+  state.serverFiles.clear();
+  state.syncedContent.clear();
+  state.recentlyWritten.clear();
+  state.conflictPaths.clear();
+  state.lastEdits.clear();
+  state.lastSnapshot = {};
+
+  for (const f of files) {
+    if (isBinaryPath(f.path) || isBinaryContent(f.content)) continue;
+    state.serverFiles.add(f.path);
+    state.syncedContent.set(f.path, f.content);
+    await writeLocal(f.path, f.content);
+  }
+
+  if (state.selectedFile && !newPaths.has(state.selectedFile)) {
+    resetViewer();
+  }
+  state.selectedFiles.clear();
+  updateBulkToolbar();
+
+  renderTree();
+  if (state.selectedFile && newPaths.has(state.selectedFile)) {
+    await selectFile(state.selectedFile);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Handshake
+   ═══════════════════════════════════════════════════════════════════ */
+function handleServerHandshake(msg) {
+  if (typeof msg.protocolVersion === 'number') {
+    state.serverProtocolVersion = msg.protocolVersion;
+    if (msg.protocolVersion !== PROTOCOL_VERSION) {
+      log(`Protokol versiya uyğunsuzluğu: server v${msg.protocolVersion}, client v${PROTOCOL_VERSION}`, 'warn');
+    }
+  }
+  if (Array.isArray(msg.capabilities)) {
+    state.serverCapabilities = new Set(msg.capabilities);
+    const supportsPatch = state.serverCapabilities.has('patch-v1') && dmp !== null;
+    state.serverSupportsPatches = supportsPatch;
+    if (supportsPatch) log('Server patch protokolunu dəstəkləyir', 'success');
+    else if (dmp === null) log('diff-match-patch yüklənmədi - tam fayl', 'info');
+    else log('Server patch dəstəkləmir - tam fayl', 'info');
+    updateSyncModeBadge();
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   VCS state management
+   ═══════════════════════════════════════════════════════════════════ */
+function applyVcsState(vcs) {
+  if (!vcs) return;
+  if (vcs.activeBranch) state.vcs.activeBranch = vcs.activeBranch;
+  if (Array.isArray(vcs.branches)) state.vcs.branches = vcs.branches;
+  if (Array.isArray(vcs.recentCommits)) {
+    state.vcs.history = vcs.recentCommits;
+  }
+  renderBranchBadge();
+  if (state.activeTab === 'history') renderHistory();
+}
+
+/* ─── Branch rendering ─── */
+function renderBranchBadge() {
+  const nameEl = $('branch-name');
+  const badge = $('branch-badge');
+  if (nameEl) nameEl.textContent = state.vcs.activeBranch || 'main';
+  if (badge) {
+    if (state.role === 'spoke') badge.classList.add('spoke');
+    else badge.classList.remove('spoke');
+  }
+}
+
+function renderBranchList() {
+  const list = $('branch-list');
+  if (!list) return;
+
+  const badge = $('branch-count-badge');
+  if (badge) badge.textContent = state.vcs.branches.length;
+
+  if (state.vcs.branches.length === 0) {
+    list.innerHTML = '<li class="branch-empty">Heç bir branch yoxdur</li>';
+    return;
+  }
+
+  const isServer = state.role === 'server';
+  list.innerHTML = state.vcs.branches.map(b => {
+    const isActive = b.name === state.vcs.activeBranch;
+    const headLabel = b.head ? `#${b.head}` : '-';
+    const delBtn = (isServer && !isActive && b.name !== 'main')
+      ? `<button class="branch-del" data-branch="${escapeHtml(b.name)}" title="Sil">
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+         </button>` : '';
+    return `<li class="branch-item ${isActive ? 'active' : ''}" data-branch="${escapeHtml(b.name)}">
+      <span class="branch-dot"></span>
+      <span class="branch-name">${escapeHtml(b.name)}</span>
+      <span class="branch-head">${headLabel}</span>
+      ${delBtn}
+    </li>`;
+  }).join('');
+
+  list.querySelectorAll('.branch-item').forEach(li => {
+    const name = li.dataset.branch;
+    li.addEventListener('click', (e) => {
+      if (e.target.closest('.branch-del')) return;
+      if (!isServer) return;
+      if (name === state.vcs.activeBranch) { toggleBranchDropdown(false); return; }
+      switchBranch(name);
+    });
+  });
+
+  list.querySelectorAll('.branch-del').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteBranch(btn.dataset.branch);
+    });
+  });
+}
+
+function toggleBranchDropdown(force) {
+  const dropdown = $('branch-dropdown');
+  const trigger = $('branch-badge');
+  const willOpen = typeof force === 'boolean' ? force : dropdown.hidden;
+
+  if (willOpen && state.role !== 'server') return;
+
+  dropdown.hidden = !willOpen;
+  trigger.classList.toggle('open', willOpen);
+  if (willOpen) renderBranchList();
+}
+
+$('branch-badge').addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (state.role !== 'server') return;
+  toggleBranchDropdown();
+});
+
+/* ─── VCS operations ─── */
+function switchBranch(name) {
+  if (state.vcs.busy) { toast('Başqa əməliyyat davam edir', 'warn'); return; }
+  if (!confirm(`"${name}" branch-inə keçilsin?\n\nBütün komanda bu branch-i görəcək. Cari dəyişikliklər avtomatik commit ediləcək.`)) return;
+
+  setVcsBusy(true);
+  log(`Branch dəyişdirilir: ${name}`, 'vcs', state.username);
+  sendWs({ type: 'branch-switch', name });
+  toggleBranchDropdown(false);
+}
+
+function deleteBranch(name) {
+  if (state.vcs.busy) { toast('Başqa əməliyyat davam edir', 'warn'); return; }
+  if (!confirm(`"${name}" branch-i silinsin?\n\nBu branch-dəki bütün commitlər itiriləcək.`)) return;
+
+  setVcsBusy(true);
+  sendWs({ type: 'branch-delete', name });
+}
+
+async function handleBranchSwitched(msg) {
+  const files = Array.isArray(msg.files) ? msg.files : [];
+  state.vcs.activeBranch = msg.name;
+  if (msg.branches) state.vcs.branches = msg.branches;
+
+  await applyFilesystemReplaced(files);
+  setVcsBusy(false);
+  renderBranchBadge();
+  renderHistory();
+  log(`Branch dəyişdirildi: ${msg.name}`, 'success');
+  toast(`"${msg.name}" branch-inə keçildi`, 'success', 4000);
+}
+
+function handleBranchCreated(branch) {
+  if (!branch) return;
+  if (!state.vcs.branches.find(b => b.name === branch.name)) {
+    state.vcs.branches.push(branch);
+  }
+  setVcsBusy(false);
+  renderBranchList();
+  renderBranchBadge();
+  log(`Branch yaradıldı: ${branch.name}`, 'vcs', state.username);
+  toast(`Branch "${branch.name}" yaradıldı`, 'success');
+}
+
+function handleBranchDeleted(name) {
+  state.vcs.branches = state.vcs.branches.filter(b => b.name !== name);
+  setVcsBusy(false);
+  renderBranchList();
+  log(`Branch silindi: ${name}`, 'warn');
+  toast(`Branch "${name}" silindi`, 'warn');
+}
+
+function handleCommitCreated(commit) {
+  if (!commit) return;
+  setVcsBusy(false);
+
+  if (!state.vcs.history) state.vcs.history = [];
+  const existing = state.vcs.history.findIndex(c => c.id === commit.id);
+  if (existing >= 0) state.vcs.history[existing] = commit;
+  else state.vcs.history.unshift(commit);
+
+  const br = state.vcs.branches.find(b => b.name === commit.branch);
+  if (br) br.head = commit.id;
+
+  renderHistory();
+  renderBranchBadge();
+
+  if (commit.auto) {
+    log(`Auto-commit #${commit.id}: "${commit.message}"`, 'vcs');
+  } else {
+    log(`Commit #${commit.id}: "${commit.message}" (${commit.filesCount || 0} fayl)`, 'success', commit.author);
+    toast(`Commit #${commit.id} yaradıldı`, 'success');
+  }
+}
+
+function handleMergePreview(msg) {
+  clearMergePreviewTimeout();
+  $('merge-preview-loading').style.display = 'none';
+  $('merge-preview-from').style.display = 'none';
+  $('merge-preview-to').style.display = 'none';
+  $('merge-preview-body').style.display = 'block';
+
+  const autoFiles = msg.autoFiles || [];
+  const conflicts = msg.conflicts || [];
+
+  $('branch-merge-title').textContent = `Merge: ${msg.from} → ${msg.to}`;
+
+  const autoSection = $('merge-section-auto');
+  const conflictSection = $('merge-section-conflicts');
+  const autoList = $('merge-auto-list');
+  const conflictList = $('merge-conflict-list');
+  const autoCount = $('merge-auto-count');
+  const conflictCount = $('merge-conflict-count');
+
+  if (autoFiles.length > 0) {
+    autoSection.style.display = '';
+    autoCount.textContent = autoFiles.length;
+    autoList.innerHTML = autoFiles.map(f => {
+      const tag = f.action === 'add' ? 'added' : f.action === 'delete' ? 'deleted' : 'modified';
+      const label = f.action === 'add' ? 'A' : f.action === 'delete' ? 'D' : 'M';
+      return `<div class="change-item ${tag}">
+        <span class="change-tag">${label}</span>
+        <span class="change-path">${escapeHtml(f.path)}</span>
+      </div>`;
+    }).join('');
+  } else {
+    autoSection.style.display = 'none';
+  }
+
+  if (conflicts.length > 0) {
+    conflictSection.style.display = '';
+    conflictCount.textContent = conflicts.length;
+    conflictList.innerHTML = conflicts.map(c => `
+      <div class="merge-conflict-item">
+        <div class="merge-conflict-path">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+          ${escapeHtml(c.path)}
+        </div>
+        <div class="merge-conflict-options">
+          <label><input type="radio" name="merge-res-${escapeHtml(c.path)}" value="from" checked> ${escapeHtml(msg.from)} versiyası</label>
+          <label><input type="radio" name="merge-res-${escapeHtml(c.path)}" value="to"> ${escapeHtml(msg.to)} versiyası</label>
+          <label><input type="radio" name="merge-res-${escapeHtml(c.path)}" value="base"> Ortaq baza</label>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    conflictSection.style.display = 'none';
+  }
+
+  state.vcs.pendingMerge = { from: msg.from, to: msg.to, conflicts: conflicts.map(c => c.path) };
+  const btn = $('btn-do-merge');
+  btn.disabled = false;
+  btn.textContent = 'Merge et';
+}
+
+async function handleMergeCompleted(msg) {
+  state.vcs.pendingMerge = null;
+  clearMergePreviewTimeout();
+  $('branch-merge-modal').hidden = true;
+
+  if (msg.branches) state.vcs.branches = msg.branches;
+  const files = Array.isArray(msg.files) ? msg.files : [];
+  if (files.length > 0) await applyFilesystemReplaced(files);
+
+  setVcsBusy(false);
+  renderBranchBadge();
+  renderHistory();
+  log(`Merge tamamlandı: commit #${msg.commitId}`, 'success');
+  toast(`Merge uğurlu (commit #${msg.commitId})`, 'success', 5000);
+}
+
+async function handleCommitRestored(msg) {
+  const files = Array.isArray(msg.files) ? msg.files : [];
+  if (msg.branches) state.vcs.branches = msg.branches;
+  if (msg.activeBranch) state.vcs.activeBranch = msg.activeBranch;
+
+  await applyFilesystemReplaced(files);
+  setVcsBusy(false);
+  renderBranchBadge();
+  renderHistory();
+  log(`Restore edildi: #${msg.id} → yeni commit #${msg.newCommitId}`, 'success');
+  toast(`Commit #${msg.id} bərpa edildi`, 'success', 5000);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Commit modal — server-authoritative dirty files
+   ═══════════════════════════════════════════════════════════════════ */
+$('btn-commit').addEventListener('click', async () => {
+  if (state.role !== 'server') { toast('Yalnız server commit edə bilər', 'warn'); return; }
+  if (state.vcs.busy) { toast('Başqa əməliyyat davam edir', 'warn'); return; }
+
+  $('commit-branch').value = state.vcs.activeBranch;
+  $('commit-message').value = '';
+  $('commit-change-list').innerHTML = '<div class="change-empty">Hesablanır…</div>';
+  $('commit-change-count').textContent = '…';
+  $('btn-do-commit').disabled = true;
+  $('commit-modal').hidden = false;
+
+  try {
+    const dirty = await requestDirtyFiles();
+    if ($('commit-modal').hidden) return;
+
+    if (dirty.length === 0) {
+      $('commit-modal').hidden = true;
+      toast('Heç bir dəyişiklik yoxdur', 'info');
+      log('Commit ləğv edildi: dəyişiklik yoxdur', 'warn');
+      return;
+    }
+
+    $('commit-change-count').textContent = dirty.length;
+    const list = $('commit-change-list');
+    list.innerHTML = dirty.map(d => {
+      const tag = d.type === 'added' ? '+' : d.type === 'deleted' ? '-' : 'M';
+      return `<div class="change-item ${d.type}">
+        <span class="change-tag">${tag}</span>
+        <span class="change-path">${escapeHtml(d.path)}</span>
+      </div>`;
+    }).join('');
+    setTimeout(() => $('commit-message').focus(), 50);
+  } catch (e) {
+    if ($('commit-modal').hidden) return;
+    $('commit-modal').hidden = true;
+    toast(e.message, 'error', 5000);
+    log('Commit: ' + e.message, 'error');
+  }
+});
+
+$('commit-message').addEventListener('input', (e) => {
+  $('btn-do-commit').disabled = e.target.value.trim().length === 0;
+});
+
+$('btn-do-commit').addEventListener('click', () => {
+  const message = $('commit-message').value.trim();
+  if (!message) return;
+  const branch = $('commit-branch').value;
+
+  setVcsBusy(true);
+  sendWs({ type: 'commit', message, branch });
+  log(`Commit yaradılır: "${message}"`, 'vcs', state.username);
+  toast('Commit yaradılır…', 'info');
+  $('commit-modal').hidden = true;
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   Branch create modal
+   ═══════════════════════════════════════════════════════════════════ */
+$('btn-new-branch').addEventListener('click', () => {
+  toggleBranchDropdown(false);
+  if (state.vcs.busy) { toast('Başqa əməliyyat davam edir', 'warn'); return; }
+  $('branch-create-name').value = '';
+  const fromSelect = $('branch-create-from');
+  fromSelect.innerHTML = state.vcs.branches.map(b =>
+    `<option value="${escapeHtml(b.name)}">${escapeHtml(b.name)}${b.name === state.vcs.activeBranch ? ' (cari)' : ''}</option>`
+  ).join('');
+  fromSelect.value = state.vcs.activeBranch;
+  $('branch-create-autocommit').checked = true;
+  $('branch-create-modal').hidden = false;
+  setTimeout(() => $('branch-create-name').focus(), 50);
+});
+
+$('btn-do-create-branch').addEventListener('click', () => {
+  const name = $('branch-create-name').value.trim();
+  if (!name || !/^[A-Za-z0-9._-]{2,64}$/.test(name)) {
+    toast('Branch adı 2-64 simvol, yalnız hərf/rəqəm/nöqtə/alt xətt/defis', 'error');
+    return;
+  }
+
+  const from = $('branch-create-from').value;
+  const autocommit = $('branch-create-autocommit').checked;
+
+  setVcsBusy(true);
+  sendWs({ type: 'branch-create', name, from, autocommit });
+  log(`Branch yaradılır: ${name} (${from}-dən)`, 'vcs', state.username);
+  toast(`Branch yaradılır: ${name}`, 'info');
+  $('branch-create-modal').hidden = true;
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   Branch merge modal — with preview timeout
+   ═══════════════════════════════════════════════════════════════════ */
+$('btn-merge-branch').addEventListener('click', () => {
+  toggleBranchDropdown(false);
+  if (state.vcs.busy) { toast('Başqa əməliyyat davam edir', 'warn'); return; }
+
+  if (state.vcs.branches.length < 2) {
+    toast('Merge üçün ən azı 2 branch lazımdır', 'warn');
+    return;
+  }
+
+  $('merge-preview-loading').style.display = 'none';
+  $('merge-preview-body').style.display = 'none';
+  $('merge-preview-from').style.display = '';
+  $('merge-preview-to').style.display = '';
+
+  const fromSel = $('merge-from-select');
+  const toSel = $('merge-to-select');
+  const optionsHtml = state.vcs.branches.map(b =>
+    `<option value="${escapeHtml(b.name)}">${escapeHtml(b.name)}</option>`
+  ).join('');
+  fromSel.innerHTML = optionsHtml;
+  toSel.innerHTML = optionsHtml;
+
+  const fromOther = state.vcs.branches.find(b => b.name !== state.vcs.activeBranch);
+  if (fromOther) fromSel.value = fromOther.name;
+  toSel.value = state.vcs.activeBranch;
+
+  $('branch-merge-title').textContent = 'Merge';
+  const btn = $('btn-do-merge');
+  btn.disabled = false;
+  btn.textContent = 'Önizlə';
+  $('branch-merge-modal').hidden = false;
+
+  state.vcs.pendingMerge = null;
+  clearMergePreviewTimeout();
+});
+
+$('btn-do-merge').addEventListener('click', () => {
+  if (!state.vcs.pendingMerge) {
+    const from = $('merge-from-select').value;
+    const to = $('merge-to-select').value;
+    if (from === to) { toast('Eyni branch seçilə bilməz', 'warn'); return; }
+
+    const btn = $('btn-do-merge');
+    btn.disabled = true;
+    btn.textContent = 'Hesablanır…';
+
+    $('merge-preview-from').style.display = 'none';
+    $('merge-preview-to').style.display = 'none';
+    $('merge-preview-loading').style.display = '';
+    $('merge-preview-body').style.display = 'none';
+
+    startMergePreviewTimeout();
+    sendWs({ type: 'branch-merge-preview', from, to });
+  } else {
+    const resolutions = {};
+    for (const path of state.vcs.pendingMerge.conflicts) {
+      const radio = document.querySelector(`input[name="merge-res-${CSS.escape(path)}"]:checked`);
+      resolutions[path] = radio ? radio.value : 'to';
+    }
+
+    setVcsBusy(true);
+    sendWs({
+      type: 'branch-merge',
+      from: state.vcs.pendingMerge.from,
+      to: state.vcs.pendingMerge.to,
+      resolutions,
+    });
+    const btn = $('btn-do-merge');
+    btn.disabled = true;
+    btn.textContent = 'Merge edilir…';
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   History rendering — restore button only for active branch
+   ═══════════════════════════════════════════════════════════════════ */
+function renderHistory() {
+  const list = $('history-list');
+  if (!list) return;
+
+  const badge = $('history-badge');
+  if (badge) {
+    const count = state.vcs.history ? state.vcs.history.filter(c => !c.auto).length : 0;
+    badge.textContent = count;
+  }
+
+  if (!state.vcs.history) {
+    list.innerHTML = '<div class="history-empty">Tarixçe yüklənmir. Yenilə düyməsinə basın.</div>';
+    return;
+  }
+
+  const filtered = state.vcs.showAuto
+    ? state.vcs.history
+    : state.vcs.history.filter(c => !c.auto);
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="history-empty">${state.vcs.showAuto ? 'Commit yoxdur' : 'Manual commit yoxdur'}</div>`;
+    return;
+  }
+
+  const sorted = [...filtered].sort((a, b) => b.ts - a.ts);
+  const headIds = new Set(state.vcs.branches.map(b => b.head));
+
+  list.innerHTML = sorted.map(c => {
+    const isHead = headIds.has(c.id);
+    const canRestore = state.role === 'server' && c.branch === state.vcs.activeBranch;
+    return `<div class="history-item ${c.auto ? 'auto' : ''} ${isHead ? 'active' : ''}" data-commit-id="${c.id}">
+      <div class="history-item-head">
+        <span class="history-item-id">#${c.id}</span>
+        <span class="history-item-msg" title="${escapeHtml(c.message || '')}">${escapeHtml(c.message || '(mesajsız)')}</span>
+      </div>
+      <div class="history-item-meta">
+        <span>${escapeHtml(c.author || '?')}</span>
+        <span>·</span>
+        <span>${relativeTime(c.ts)}</span>
+        <span>·</span>
+        <span class="branch-tag">${escapeHtml(c.branch || '?')}</span>
+        <span>·</span>
+        <span>${c.filesCount || 0} fayl</span>
+        ${c.parents && c.parents.length > 1 ? '<span>· merge</span>' : ''}
+        ${c.auto ? '<span>· auto</span>' : ''}
+      </div>
+      <div class="history-item-actions">
+        <button class="details-btn" data-commit-id="${c.id}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          Detallar
+        </button>
+        ${canRestore ? `<button class="restore-btn" data-commit-id="${c.id}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          Bərpa
+        </button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('.details-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openCommitDetails(Number(btn.dataset.commitId));
+    });
+  });
+
+  list.querySelectorAll('.restore-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      restoreCommit(Number(btn.dataset.commitId));
+    });
+  });
+}
+
+function openCommitDetails(commitId) {
+  if (!state.vcs.history) return;
+  const commit = state.vcs.history.find(c => c.id === commitId);
+  if (!commit) return;
+
+  const body = $('commit-details-body');
+  const changes = commit.changes || [];
+  const parents = commit.parents && commit.parents.length > 1
+    ? commit.parents.map(p => `#${p}`).join(', ')
+    : `#${commit.parent || '-'}`;
+
+  body.innerHTML = `
+    <dl class="details-grid">
+      <dt>Commit</dt><dd>#${commit.id}</dd>
+      <dt>Branch</dt><dd>${escapeHtml(commit.branch || '')}</dd>
+      <dt>Müəllif</dt><dd class="txt">${escapeHtml(commit.author || '')}</dd>
+      <dt>Tarix</dt><dd>${formatDateTime(commit.ts)}</dd>
+      <dt>Parent</dt><dd>${parents}</dd>
+      <dt>Mesaj</dt><dd class="txt">${escapeHtml(commit.message || '')}</dd>
+      <dt>Fayl sayı</dt><dd>${commit.filesCount || 0}</dd>
+      ${commit.auto ? '<dt>Tip</dt><dd class="txt">Avtomatik</dd>' : ''}
+    </dl>
+    ${changes.length > 0 ? `
+      <div class="field-row" style="margin-top:14px">
+        <label>Dəyişikliklər (${changes.length})</label>
+        <div class="change-list">
+          ${changes.map(ch => {
+            const tag = ch.type === 'added' ? '+' : ch.type === 'deleted' ? '-' : 'M';
+            return `<div class="change-item ${ch.type}">
+              <span class="change-tag">${tag}</span>
+              <span class="change-path">${escapeHtml(ch.path)}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    ` : ''}
+  `;
+
+  $('commit-details-modal').hidden = false;
+}
+
+function restoreCommit(commitId) {
+  if (state.role !== 'server') { toast('Yalnız server bərpa edə bilər', 'warn'); return; }
+  if (state.vcs.busy) { toast('Başqa əməliyyat davam edir', 'warn'); return; }
+
+  const commit = state.vcs.history ? state.vcs.history.find(c => c.id === commitId) : null;
+  if (commit && commit.branch !== state.vcs.activeBranch) {
+    toast('Yalnız aktiv branch-in commit-lərinə bərpa mümkündür', 'warn', 5000);
+    return;
+  }
+
+  if (!confirm(`Commit #${commitId}-ə bərpa edilsin?\n\nCari vəziyyət avtomatik commit ediləcək. Yeni commit yaradılacaq.`)) return;
+
+  setVcsBusy(true);
+  sendWs({ type: 'commit-restore', id: commitId });
+  log(`Restore tələb edildi: #${commitId}`, 'vcs', state.username);
+  toast(`Commit #${commitId}-ə bərpa edilir…`, 'info');
+}
+
+$('history-show-auto').addEventListener('change', (e) => {
+  state.vcs.showAuto = e.target.checked;
+  renderHistory();
+});
+
+$('btn-history-refresh').addEventListener('click', () => {
+  if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
+    toast('Broker-ə qoşulmayıb', 'warn');
+    return;
+  }
+  sendWs({ type: 'history-request', limit: 200, includeAuto: state.vcs.showAuto });
+  log('Tarixçe yenilənir…', 'info');
+});
+
+document.querySelectorAll('.panel-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const target = tab.dataset.tab;
+    state.activeTab = target;
+    document.querySelectorAll('.panel-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === target));
+    $('log').hidden = target !== 'activity';
+    $('history').hidden = target !== 'history';
+    if (target === 'history') {
+      if (!state.vcs.history) {
+        sendWs({ type: 'history-request', limit: 200, includeAuto: false });
+      }
+      renderHistory();
+    }
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   Remote update — CONFLICT DETECTION
+   ═══════════════════════════════════════════════════════════════════ */
+async function applyRemoteFileUpdate(path, content, remoteUser) {
+  if (typeof path !== 'string' || typeof content !== 'string') {
+    log('Server yeniləməsi: path və ya content yoxdur', 'error');
+    return;
+  }
+
+  if (isBinaryPath(path) || isBinaryContent(content)) {
+    log(`${path} binary - skip`, 'warn');
+    return;
+  }
+
+  state.serverFiles.add(path);
+  state.lastEdits.set(path, { username: remoteUser, ts: Date.now() });
+
+  const existing = await readLocal(path);
+
+  if (existing === content) {
+    state.syncedContent.set(path, content);
+    return;
+  }
+
+  const base = state.syncedContent.get(path);
+
+  if (base === undefined) {
+    await writeLocal(path, content);
+    state.syncedContent.set(path, content);
+    log(`${path} yeniləndi`, 'sync', remoteUser);
+    if (state.selectedFile === path) await selectFile(path);
+    renderTree();
+    return;
+  }
+
+  if (base === content) return;
+
+  if (existing === base) {
+    await writeLocal(path, content);
+    state.syncedContent.set(path, content);
+    log(`${path} yeniləndi`, 'sync', remoteUser);
+    if (state.selectedFile === path) await selectFile(path);
+    renderTree();
+    return;
+  }
+
+  const saved = await saveConflictBackup(path, existing, remoteUser);
+  state.conflictPaths.set(path, {
+    ts: Date.now(),
+    backupPath: saved,
+    serverContent: content,
+  });
+  log(`Konflikt: ${path} - ${remoteUser} tərəfindən yenilənib (lokal saxlanıldı)`, 'conflict', remoteUser);
+  toast(`Konflikt: ${path} - fərqi həll edin`, 'warn', 6000);
+  if (state.selectedFile === path) await showConflictView(path);
+  renderTree();
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Remote patch handler
+   ═══════════════════════════════════════════════════════════════════ */
+async function handleRemotePatch(msg) {
+  const path = msg.path;
+  const remoteUser = msg.username || 'server';
+
+  if (typeof path !== 'string' || typeof msg.patch !== 'string') {
+    log('file-patch: etibarsız mesaj', 'error');
+    return;
+  }
+  if (!dmp) { log('file-patch: dmp yoxdur', 'error'); return; }
+
+  const base = state.syncedContent.get(path);
+  if (typeof base !== 'string') {
+    log(`file-patch: ${path} üçün baza yoxdur`, 'warn');
+    return;
+  }
+  if (msg.baseHash && hashContent(base) !== msg.baseHash) {
+    log(`file-patch: ${path} - baza hash uyğun deyil`, 'warn');
+    return;
+  }
+
+  let newContent;
+  try {
+    const patches = dmp.patch_fromText(msg.patch);
+    const [result, applied] = dmp.patch_apply(patches, base);
+    if (!applied.every(r => r === true)) {
+      log(`file-patch: ${path} - patch tam tətbiq olunmadı`, 'warn');
+      return;
+    }
+    if (msg.resultHash && hashContent(result) !== msg.resultHash) {
+      log(`file-patch: ${path} - nəticə hash uyğun deyil`, 'warn');
+      return;
+    }
+    newContent = result;
+  } catch (e) {
+    log(`file-patch: ${path} - xəta: ${e.message}`, 'warn');
+    return;
+  }
+
+  await applyRemoteFileUpdate(path, newContent, remoteUser);
+  log(`${path} patch tətbiq edildi`, 'sync', remoteUser);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Init finalization
+   ═══════════════════════════════════════════════════════════════════ */
+async function finalizeInit(files, metadata) {
+  if (state.finalizingInit) { log('Init artıq emal olunur…', 'warn'); return; }
+  if (!state.dirHandle && !state.virtualFS) {
+    log('Init: qovluq əlçatan deyil', 'error');
+    return;
+  }
+  state.finalizingInit = true;
+
+  try {
+    state.clientId = metadata.clientId;
+    if (typeof metadata.clientCount === 'number') state.clientCount = metadata.clientCount;
+    if (typeof metadata.snapshotCount === 'number') {
+      state.snapshotCount = metadata.snapshotCount;
+      $('snapshot-count').textContent = state.snapshotCount;
+    }
+
+    if (state.role === 'server') {
+      const folderName = state.dirHandle?.name || 'virtual-project';
+      if (!metadata.projectName || metadata.projectName !== folderName) {
+        state.projectName = folderName;
+        sendWs({ type: 'set-project-name', name: folderName });
+      } else {
+        state.projectName = metadata.projectName;
+      }
+    } else if (metadata.projectName) {
+      state.projectName = metadata.projectName;
+    }
+    $('project-name-text').textContent = state.projectName || '-';
+
+    log(`Broker-dən ${files.length} fayl alındı (client #${metadata.clientId}).`, 'sync');
+
+    let localSnapshot;
+    try { localSnapshot = await snapshotDir(''); }
+    catch (e) {
+      log(`Lokal qovluq oxuna bilmədi: ${e.message}`, 'error');
+      return;
+    }
+
+    let conflictCount = 0, localWinsCount = 0, remoteWinsCount = 0;
+    const pendingSends = new Map();
+
+    for (const f of files) {
+      if (isBinaryPath(f.path) || isBinaryContent(f.content)) continue;
+      state.serverFiles.add(f.path);
+      const existing = localSnapshot[f.path]?.content ?? null;
+      const synced = state.syncedContent.get(f.path);
+
+      if (existing === f.content) {
+        state.syncedContent.set(f.path, f.content);
+        continue;
+      }
+
+      if (existing === null) {
+        await writeLocal(f.path, f.content);
+        state.syncedContent.set(f.path, f.content);
+        remoteWinsCount++;
+        continue;
+      }
+
+      const localMatchesSynced = synced !== undefined && existing === synced;
+      const remoteMatchesSynced = synced !== undefined && f.content === synced;
+      const isFirstSync = synced === undefined;
+
+      if (localMatchesSynced && !remoteMatchesSynced) {
+        await writeLocal(f.path, f.content);
+        state.syncedContent.set(f.path, f.content);
+        remoteWinsCount++;
+        continue;
+      }
+
+      if (remoteMatchesSynced && !localMatchesSynced) {
+        pendingSends.set(f.path, existing);
+        state.syncedContent.set(f.path, existing);
+        markRecentlyWritten(f.path, existing);
+        localWinsCount++;
+        continue;
+      }
+
+      const saved = await saveConflictBackup(f.path, existing, isFirstSync ? 'broker (initial)' : 'broker');
+      if (saved) {
+        conflictCount++;
+        state.conflictPaths.set(f.path, {
+          ts: Date.now(),
+          backupPath: saved,
+          serverContent: f.content,
+          localOverwritten: true,
+        });
+        log(`Konflikt (sync): ${f.path} → ${saved}`, 'conflict');
+      }
+      await writeLocal(f.path, f.content);
+      state.syncedContent.set(f.path, f.content);
+      remoteWinsCount++;
+    }
+
+    let freshSnapshot;
+    try { freshSnapshot = await snapshotDir(''); }
+    catch { freshSnapshot = localSnapshot; }
+
+    for (const path in freshSnapshot) {
+      if (state.serverFiles.has(path)) continue;
+      if (isBinaryPath(path) || isBinaryContent(freshSnapshot[path].content)) continue;
+      pendingSends.set(path, freshSnapshot[path].content);
+      state.serverFiles.add(path);
+      state.syncedContent.set(path, freshSnapshot[path].content);
+      markRecentlyWritten(path, freshSnapshot[path].content);
+      localWinsCount++;
+    }
+
+    state.lastSnapshot = freshSnapshot;
+
+    if (conflictCount > 0) {
+      toast(`${conflictCount} fayl konflikti - yerli versiyalar _conflicts/ qovluğunda`, 'warn', 8000);
+      log(`${conflictCount} konflikt _conflicts/ qovluğuna yazıldı`, 'conflict');
+    }
+    if (localWinsCount > 0) {
+      log(`${localWinsCount} offline/lokal dəyişiklik göndərilir`, 'success', state.username);
+      toast(`${localWinsCount} offline dəyişiklik qorunur`, 'success', 5000);
+    }
+    if (remoteWinsCount > 0 && conflictCount === 0) {
+      log(`${remoteWinsCount} fayl broker-dən yeniləndi`, 'sync');
+    }
+
+    if (pendingSends.size > 0) flushPendingSends(pendingSends);
+
+    startPolling();
+    renderTree();
+    renderBranchBadge();
+    renderHistory();
+    log('Sinxronizasiya aktivdir.', 'success');
+  } finally {
+    state.finalizingInit = false;
+  }
+}
+
+function flushPendingSends(pendingSends) {
+  const queue = Array.from(pendingSends.entries());
+  let idx = 0;
+  const sendNext = () => {
+    if (idx >= queue.length) return;
+    const [path, content] = queue[idx++];
+    sendFileUpdate(path, content);
+    if (idx < queue.length) {
+      const delay = queue.length > INIT_BULK_SEND_THRESHOLD ? 10 : 0;
+      setTimeout(sendNext, delay);
+    }
+  };
+  sendNext();
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Memory cleanup
+   ═══════════════════════════════════════════════════════════════════ */
+function startMemoryCleanup() {
+  if (state.cleanupTimer) return;
+  state.cleanupTimer = setInterval(cleanupStaleState, MEMORY_CLEANUP_INTERVAL_MS);
+}
+function stopMemoryCleanup() {
+  if (state.cleanupTimer) { clearInterval(state.cleanupTimer); state.cleanupTimer = null; }
+}
+function cleanupStaleState() {
+  const now = Date.now();
+  let cleaned = 0;
+  for (const [path, rec] of state.recentlyWritten) {
+    if (now > rec.expiresAt) { state.recentlyWritten.delete(path); cleaned++; }
+  }
+  for (const [path, rec] of state.lastEdits) {
+    if (now - rec.ts > LAST_EDIT_TTL_MS) { state.lastEdits.delete(path); cleaned++; }
+  }
+  for (const [path, rec] of state.conflictPaths) {
+    if (now - rec.ts > CONFLICT_PATH_TTL_MS) {
+      state.conflictPaths.delete(path); cleaned++;
+      log(`Köhnə konflikt qeydi təmizləndi: ${path}`, 'info');
+    }
+  }
+  if (cleaned > 0) log(`Yaddaş təmizləndi: ${cleaned} qeyd`, 'info');
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Local FS — FSA + VirtualFS adapter
+   ═══════════════════════════════════════════════════════════════════ */
+async function readLocal(path) {
+  if (state.virtualFS) {
+    return state.virtualFS.get(path) ?? null;
+  }
+  try {
+    const parts = path.split('/');
+    let dir = state.dirHandle;
+    for (let i = 0; i < parts.length - 1; i++) dir = await dir.getDirectoryHandle(parts[i]);
+    const fh = await dir.getFileHandle(parts[parts.length - 1]);
+    const f = await fh.getFile();
+    if (f.size > MAX_FILE_SIZE) return null;
+    return await f.text();
+  } catch { return null; }
+}
+
+async function readLocalBytes(path) {
+  if (state.virtualFS) {
+    const content = state.virtualFS.get(path);
+    if (content == null) return null;
+    return new TextEncoder().encode(content);
+  }
+  try {
+    const parts = path.split('/');
+    let dir = state.dirHandle;
+    for (let i = 0; i < parts.length - 1; i++) dir = await dir.getDirectoryHandle(parts[i]);
+    const fh = await dir.getFileHandle(parts[parts.length - 1]);
+    const f = await fh.getFile();
+    if (f.size > MAX_FILE_SIZE) return null;
+    return new Uint8Array(await f.arrayBuffer());
+  } catch { return null; }
+}
+
+async function readConflictFile(backupPath) {
+  if (!backupPath) return null;
+  if (state.virtualFS) return state.virtualFS.get(backupPath) ?? null;
+  try {
+    const parts = backupPath.split('/');
+    let dir = state.dirHandle;
+    for (let i = 0; i < parts.length - 1; i++) dir = await dir.getDirectoryHandle(parts[i]);
+    const fh = await dir.getFileHandle(parts[parts.length - 1]);
+    const f = await fh.getFile();
+    if (f.size > MAX_FILE_SIZE) return null;
+    return await f.text();
+  } catch { return null; }
+}
+
+async function writeLocal(path, content) {
+  markRecentlyWritten(path, content);
+  if (state.virtualFS) {
+    state.virtualFS.set(path, content);
+    state.lastSnapshot[path] = { content, mtime: Date.now(), size: content.length };
+    return;
+  }
+  const parts = path.split('/');
+  let dir = state.dirHandle;
+  for (let i = 0; i < parts.length - 1; i++) {
+    dir = await dir.getDirectoryHandle(parts[i], { create: true });
+  }
+  const fh = await dir.getFileHandle(parts[parts.length - 1], { create: true });
+  const w = await fh.createWritable();
+  await w.write(content);
+  await w.close();
+
+  try {
+    const f = await fh.getFile();
+    state.lastSnapshot[path] = { content, mtime: f.lastModified, size: f.size };
+  } catch {
+    state.lastSnapshot[path] = { content, mtime: Date.now(), size: content.length };
+  }
+}
+
+async function deleteLocal(path) {
+  delete state.lastSnapshot[path];
+  if (state.virtualFS) { state.virtualFS.delete(path); return; }
+  const parts = path.split('/');
+  let dir = state.dirHandle;
+  for (let i = 0; i < parts.length - 1; i++) {
+    try { dir = await dir.getDirectoryHandle(parts[i]); } catch { return; }
+  }
+  try { await dir.removeEntry(parts[parts.length - 1]); } catch {}
+}
+
+async function saveConflictBackup(path, localContent, remoteUser) {
+  if (state.virtualFS) {
+    const key = `${CONFLICT_DIR}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}/${path}.local`;
+    state.virtualFS.set(key, localContent);
+    return key;
+  }
+  try {
+    if (!state.dirHandle) return null;
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const root = await state.dirHandle.getDirectoryHandle(CONFLICT_DIR, { create: true });
+    const session = await root.getDirectoryHandle(ts, { create: true });
+    const parts = path.split('/');
+    let dir = session;
+    for (let i = 0; i < parts.length - 1; i++) {
+      dir = await dir.getDirectoryHandle(parts[i], { create: true });
+    }
+    const fileName = parts[parts.length - 1] + '.local';
+    const fh = await dir.getFileHandle(fileName, { create: true });
+    const w = await fh.createWritable();
+    await w.write(localContent);
+    await w.close();
+    return `${CONFLICT_DIR}/${ts}/${path}.local`;
+  } catch (e) {
+    console.error('saveConflictBackup failed', e);
+    return null;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Polling
+   ═══════════════════════════════════════════════════════════════════ */
+function startPolling() {
+  if (state.pollTimer) clearInterval(state.pollTimer);
+  state.pollTimer = setInterval(() => {
+    if (document.hidden) return;
+    pollFolder().catch(e => console.error('poll error', e));
+  }, POLL_INTERVAL_MS);
+}
+function stopPolling() {
+  if (state.pollTimer) { clearInterval(state.pollTimer); state.pollTimer = null; }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && state.ws && state.ws.readyState === WebSocket.OPEN) {
+    pollFolder().catch(e => console.error('poll error', e));
+  }
+});
+
+async function pollFolder() {
+  if ((!state.dirHandle && !state.virtualFS)) return;
+  if (!state.ws || state.ws.readyState !== WebSocket.OPEN) return;
+  if (state.vcs.busy) return;
+  if (!state.projectName && state.role === 'spoke') return;
+
+  let snapshot;
+  try { snapshot = await snapshotDir(''); }
+  catch (e) { console.error('snapshotDir failed', e); return; }
+
+  for (const path in snapshot) {
+    const fileData = snapshot[path];
+
+    if (state.conflictPaths.has(path)) continue;
+    if (isBinaryPath(path) || isBinaryContent(fileData.content)) continue;
+
+    if (isRecentlyWritten(path)) {
+      const rec = getRecentlyWritten(path);
+      if (rec && rec.content === fileData.content) continue;
+      state.recentlyWritten.delete(path);
+    }
+
+    const prev = state.lastSnapshot[path];
+    if (prev && prev.content === fileData.content) continue;
+
+    if (!state.serverFiles.has(path)) {
+      sendFileUpdate(path, fileData.content, { forceFull: true });
+      state.serverFiles.add(path);
+      log(`${path} avtomatik əlavə edildi`, 'success', state.username);
+      continue;
+    }
+
+    if (state.syncedContent.get(path) === fileData.content) continue;
+
+    sendFileUpdate(path, fileData.content);
+    log(`${path} yeniləndi`, 'info', state.username);
+  }
+
+  for (const path in state.lastSnapshot) {
+    if ((path in snapshot) || isRecentlyWritten(path)) continue;
+    delete state.lastSnapshot[path];
+    state.syncedContent.delete(path);
+    log(`${path} yerli olaraq silindi (serverdə qorunur)`, 'warn', state.username);
+  }
+
+  state.lastSnapshot = snapshot;
+  renderTree();
+}
+
+async function snapshotDir(basePath) {
+  if (state.virtualFS) {
+    const out = {};
+    for (const [p, c] of state.virtualFS) {
+      if (!p.startsWith(basePath)) continue;
+      if (isBinaryPath(p) || isBinaryContent(c)) continue;
+      const topSegment = p.split('/')[0];
+      if (IGNORE_DIRS.has(topSegment)) continue;
+      if (topSegment.startsWith('.')) continue;
+      out[p] = { content: c, mtime: Date.now(), size: c.length };
+    }
+    return out;
+  }
+
+  const out = {};
+  const dirHandle = state.dirHandle;
+  for await (const [name, h] of dirHandle.entries()) {
+    if (name.startsWith('.')) continue;
+    if (IGNORE_DIRS.has(name)) continue;
+    const p = basePath ? `${basePath}/${name}` : name;
+    if (h.kind === 'file') {
+      try {
+        if (isBinaryPath(p)) continue;
+        const f = await h.getFile();
+        if (f.size > MAX_FILE_SIZE) continue;
+        const prev = state.lastSnapshot[p];
+        if (prev && prev.mtime === f.lastModified && prev.size === f.size) {
+          out[p] = prev;
+        } else {
+          const content = await f.text();
+          if (isBinaryContent(content)) continue;
+          out[p] = { content, mtime: f.lastModified, size: f.size };
+        }
+      } catch {}
+    } else if (h.kind === 'directory') {
+      Object.assign(out, await snapshotDir(p));
+    }
+  }
+  return out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Online users
+   ═══════════════════════════════════════════════════════════════════ */
+function updateOnlineUsers(users) {
+  state.onlineUsers = Array.isArray(users) ? users : [];
+  state.clientCount = state.onlineUsers.length;
+  $('client-count-text').textContent = state.clientCount;
+  $('online-count-badge').textContent = state.clientCount;
+
+  const list = $('online-list');
+  if (state.onlineUsers.length === 0) {
+    list.innerHTML = '<li class="online-empty">Hələ heç kim yoxdur</li>';
+    return;
+  }
+  list.innerHTML = state.onlineUsers.map(name => {
+    const isSelf = name === state.username;
+    const initial = (name || '?').charAt(0).toUpperCase();
+    return `<li class="online-item${isSelf ? ' self' : ''}">
+      <span class="online-avatar">${escapeHtml(initial)}</span>
+      <span class="online-name">${escapeHtml(name)}</span>
+      ${isSelf ? '<span class="online-tag">siz</span>' : ''}
+    </li>`;
+  }).join('');
+}
+
+function toggleOnlineDropdown(force) {
+  const dropdown = $('online-dropdown');
+  const trigger = $('client-count');
+  const willOpen = typeof force === 'boolean' ? force : dropdown.hidden;
+  dropdown.hidden = !willOpen;
+  trigger.classList.toggle('open', willOpen);
+  trigger.setAttribute('aria-expanded', String(willOpen));
+}
+$('client-count').addEventListener('click', (e) => { e.stopPropagation(); toggleOnlineDropdown(); });
+
+/* ═══════════════════════════════════════════════════════════════════
+   Snapshots
+   ═══════════════════════════════════════════════════════════════════ */
+function toggleSnapshotDropdown(force) {
+  const dropdown = $('snapshot-dropdown');
+  const trigger = $('snapshot-badge');
+  const willOpen = typeof force === 'boolean' ? force : dropdown.hidden;
+  dropdown.hidden = !willOpen;
+  trigger.classList.toggle('open', willOpen);
+  trigger.setAttribute('aria-expanded', String(willOpen));
+  if (willOpen) loadSnapshots();
+}
+$('snapshot-badge').addEventListener('click', (e) => { e.stopPropagation(); toggleSnapshotDropdown(); });
+$('btn-snapshot-refresh').addEventListener('click', (e) => { e.stopPropagation(); loadSnapshots(); });
+$('btn-manual-snapshot').addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (state.role !== 'server') { toast('Yalnız server snapshot yarada bilər', 'warn'); return; }
+  if (state.vcs.busy) { toast('Başqa əməliyyat davam edir', 'warn'); return; }
+  sendWs({ type: 'snapshot-request' });
+  log('Manual snapshot tələb edildi', 'snapshot', state.username);
+  toast('Snapshot yaradılır…', 'info');
+});
+
+async function loadSnapshots() {
+  const list = $('snapshot-list');
+  list.innerHTML = '<li class="snapshot-empty">Yüklənir…</li>';
+  try {
+    const res = await fetch('/api/snapshots');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const sorted = [...(data.snapshots || [])].sort((a, b) => b.createdAt - a.createdAt);
+
+    if (sorted.length === 0) {
+      list.innerHTML = '<li class="snapshot-empty">Hələ heç bir snapshot yoxdur</li>';
+      return;
+    }
+    list.innerHTML = sorted.map(s => `
+      <li class="snapshot-item">
+        <div class="snapshot-item-info">
+          <div class="snapshot-item-name">${escapeHtml(s.name)}</div>
+          <div class="snapshot-item-meta">
+            <span>${s.fileCount} fayl</span><span>·</span>
+            <span>${formatBytes(s.size)}</span><span>·</span>
+            <span>${new Date(s.createdAt).toLocaleString('az-AZ', { hour12: false })}</span>
+          </div>
+        </div>
+        <button class="snapshot-restore-btn" data-name="${escapeHtml(s.name)}">Bərpa</button>
+      </li>
+    `).join('');
+
+    list.querySelectorAll('.snapshot-restore-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => { e.stopPropagation(); restoreSnapshot(btn.dataset.name, btn); });
+    });
+  } catch (e) {
+    list.innerHTML = `<li class="snapshot-empty">Yüklənmə xətası: ${escapeHtml(e.message)}</li>`;
+  }
+}
+
+async function restoreSnapshot(name, btn) {
+  if (state.role !== 'server') { toast('Yalnız server bərpa edə bilər', 'warn'); return; }
+  if (!confirm(`"${name}" snapshot-ı bərpa edilsin?\n\nBÜTÜN cari fayllar bu snapshot ilə əvəz olunacaq (snapshot-da olmayan fayllar SİLİNƏCƏK).`)) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Bərpa…'; }
+  log(`Snapshot bərpa istəyi: ${name}`, 'snapshot', state.username);
+  toast('Bərpa əmri göndərildi…', 'info');
+  sendWs({ type: 'snapshot-restore', name });
+  toggleSnapshotDropdown(false);
+}
+
+document.addEventListener('click', (e) => {
+  const od = $('online-dropdown');
+  if (!od.hidden && !$('client-count').contains(e.target) && !od.contains(e.target)) {
+    toggleOnlineDropdown(false);
+  }
+  const sd = $('snapshot-dropdown');
+  if (!sd.hidden && !$('snapshot-badge').contains(e.target) && !sd.contains(e.target)) {
+    toggleSnapshotDropdown(false);
+  }
+  const bd = $('branch-dropdown');
+  if (!bd.hidden && !$('branch-badge').contains(e.target) && !bd.contains(e.target)) {
+    toggleBranchDropdown(false);
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   File tree
+   ═══════════════════════════════════════════════════════════════════ */
+function buildTree(fileSet) {
+  const root = { children: {} };
+  for (const p of fileSet) {
+    const parts = p.split('/');
+    let node = root;
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (!node.children[parts[i]]) {
+        node.children[parts[i]] = { type: 'dir', name: parts[i], children: {} };
+      }
+      node = node.children[parts[i]];
+    }
+    const fileName = parts[parts.length - 1];
+    node.children[fileName] = { type: 'file', name: fileName, path: p };
+  }
+  return root;
+}
+
+function renderTree() {
+  const tree = $('tree');
+  const scrollTop = tree.scrollTop;
+
+  let files = Array.from(state.serverFiles);
+  if (state.searchQuery) {
+    const q = state.searchQuery.toLowerCase();
+    files = files.filter(p => p.toLowerCase().includes(q));
+  }
+
+  $('file-count').textContent = files.length;
+  tree.innerHTML = '';
+
+  if (files.length === 0) {
+    const isSearch = !!state.searchQuery;
+    tree.innerHTML = `<div class="tree-empty">${ICONS.filesEmpty}${isSearch ? 'Uyğun fayl tapılmadı.' : 'Fayl yoxdur.<br>Serverdən gözlənilir…'}</div>`;
+    return;
+  }
+
+  const root = buildTree(files);
+
+  function render(node, depth, parentPath) {
+    const keys = Object.keys(node.children).sort((a, b) => {
+      const na = node.children[a], nb = node.children[b];
+      if (na.type !== nb.type) return na.type === 'dir' ? -1 : 1;
+      return a.localeCompare(b);
+    });
+
+    for (const key of keys) {
+      const child = node.children[key];
+      const fullPath = parentPath ? `${parentPath}/${key}` : key;
+      const el = document.createElement('div');
+      el.style.paddingLeft = (10 + depth * 14) + 'px';
+      el.setAttribute('role', 'treeitem');
+
+      if (child.type === 'dir') {
+        const collapsed = state.collapsedDirs.has(fullPath) && !state.searchQuery;
+        el.className = 'tree-item dir';
+        el.innerHTML = `
+          <span class="check-spacer"></span>
+          <span class="chevron">${collapsed ? ICONS.chevronRight : ICONS.chevronDown}</span>
+          <span class="icon">${ICONS.folder}</span>
+          <span class="name">${escapeHtml(child.name)}</span>`;
+        el.onclick = () => {
+          if (state.collapsedDirs.has(fullPath)) state.collapsedDirs.delete(fullPath);
+          else state.collapsedDirs.add(fullPath);
+          renderTree();
+        };
+        tree.appendChild(el);
+        if (!collapsed) render(child, depth + 1, fullPath);
+      } else {
+        const extCls = fileExtClass(child.name);
+        const isConflict = state.conflictPaths.has(child.path);
+        const lastEdit = state.lastEdits.get(child.path);
+        el.className = 'tree-item file ' + extCls;
+        if (state.selectedFile === child.path) el.classList.add('selected');
+        if (state.selectedFiles.has(child.path)) el.classList.add('multi-selected');
+        if (isConflict) el.classList.add('has-conflict');
+
+        let tooltip = child.path;
+        if (lastEdit) tooltip += `\nSon redaktə: ${lastEdit.username} (${formatTime(lastEdit.ts)})`;
+        if (isConflict) tooltip += `\nKonflikt (${formatTime(state.conflictPaths.get(child.path).ts)})`;
+        el.title = tooltip;
+
+        const isChecked = state.selectedFiles.has(child.path);
+        el.innerHTML = `
+          <span class="checkbox${isChecked ? ' checked' : ''}" data-path="${escapeHtml(child.path)}" role="checkbox" aria-checked="${isChecked}" tabindex="-1"></span>
+          <span class="chevron-spacer"></span>
+          <span class="icon">${ICONS.file}</span>
+          <span class="name">${escapeHtml(child.name)}</span>`;
+
+        const checkbox = el.querySelector('.checkbox');
+        checkbox.addEventListener('click', (e) => { e.stopPropagation(); toggleFileSelection(child.path); });
+
+        el.addEventListener('click', (e) => {
+          if (e.ctrlKey || e.metaKey) { e.preventDefault(); toggleFileSelection(child.path); }
+          else if (e.shiftKey && state.lastClickedPath) { e.preventDefault(); rangeSelect(child.path); }
+          else { state.lastClickedPath = child.path; selectFile(child.path); }
+        });
+
+        el.addEventListener('contextmenu', (e) => onFileContextMenu(e, child.path));
+        tree.appendChild(el);
+      }
+    }
+  }
+
+  render(root, 0, '');
+  tree.scrollTop = scrollTop;
+  $('tree-panel').classList.toggle('has-selection', state.selectedFiles.size > 0);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Multi-select
+   ═══════════════════════════════════════════════════════════════════ */
+function toggleFileSelection(path) {
+  if (state.selectedFiles.has(path)) state.selectedFiles.delete(path);
+  else state.selectedFiles.add(path);
+  updateBulkToolbar();
+  renderTree();
+}
+
+function rangeSelect(targetPath) {
+  const allPaths = Array.from(state.serverFiles).sort();
+  const a = allPaths.indexOf(state.lastClickedPath);
+  const b = allPaths.indexOf(targetPath);
+  if (a === -1 || b === -1) { toggleFileSelection(targetPath); return; }
+  const [start, end] = a < b ? [a, b] : [b, a];
+  for (let i = start; i <= end; i++) state.selectedFiles.add(allPaths[i]);
+  updateBulkToolbar();
+  renderTree();
+}
+
+function clearSelection() {
+  state.selectedFiles.clear();
+  updateBulkToolbar();
+  renderTree();
+}
+
+function selectAllVisibleFiles() {
+  let files = Array.from(state.serverFiles);
+  if (state.searchQuery) {
+    const q = state.searchQuery.toLowerCase();
+    files = files.filter(p => p.toLowerCase().includes(q));
+  }
+  files.forEach(p => state.selectedFiles.add(p));
+  updateBulkToolbar();
+  renderTree();
+}
+
+function updateBulkToolbar() {
+  const tb = $('bulk-toolbar');
+  const count = state.selectedFiles.size;
+  tb.hidden = count === 0;
+  if (count > 0) $('bulk-count').textContent = count;
+  $('tree-panel').classList.toggle('has-selection', count > 0);
+  updateVcsButtons();
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Context menu
+   ═══════════════════════════════════════════════════════════════════ */
+function showContextMenu(x, y, items) {
+  const menu = $('file-context-menu');
+  menu.innerHTML = items.map(it => {
+    if (it.divider) return '<div class="context-divider"></div>';
+    return `<button data-action="${it.action}" class="${it.className || ''}">${it.icon || ''}<span>${escapeHtml(it.label)}</span></button>`;
+  }).join('');
+  menu.classList.add('visible');
+  menu.style.left = '0px'; menu.style.top = '0px';
+  const rect = menu.getBoundingClientRect();
+  let left = x, top = y;
+  if (left + rect.width > window.innerWidth - 8) left = window.innerWidth - rect.width - 8;
+  if (top + rect.height > window.innerHeight - 8) top = window.innerHeight - rect.height - 8;
+  if (left < 8) left = 8;
+  if (top < 8) top = 8;
+  menu.style.left = left + 'px'; menu.style.top = top + 'px';
+}
+
+function hideContextMenu() { $('file-context-menu').classList.remove('visible'); }
+
+function onFileContextMenu(e, path) {
+  e.preventDefault();
+  e.stopPropagation();
+  if (!state.selectedFiles.has(path)) {
+    state.selectedFiles.clear();
+    state.selectedFiles.add(path);
+    updateBulkToolbar();
+    renderTree();
+  }
+  const count = state.selectedFiles.size;
+  const isServer = state.role === 'server';
+  const items = [];
+
+  if (count === 1) {
+    items.push({ action: 'view', label: 'Faylı aç', icon: ICONS.eye });
+    items.push({ action: 'copy-path', label: 'Yolu kopyala', icon: ICONS.link });
+    items.push({ divider: true });
+    items.push({ action: 'force-send', label: 'Serverə məcburi göndər', icon: ICONS.upload });
+    if (state.conflictPaths.has(path)) {
+      items.push({ action: 'resolve-conflict', label: 'Konflikti həll et', icon: ICONS.warn });
+    }
+    if (isServer) {
+      items.push({ divider: true });
+      items.push({ action: 'delete', label: 'Serverdən sil', className: 'danger', icon: ICONS.trash });
+    }
+  } else {
+    if (isServer) items.push({ action: 'delete', label: `${count} faylı sil`, className: 'danger', icon: ICONS.trash });
+    items.push({ action: 'clear-selection', label: 'Seçimi ləğv et', icon: ICONS.back });
+  }
+
+  showContextMenu(e.clientX, e.clientY, items);
+}
+
+async function handleContextAction(action) {
+  if (action === 'view') {
+    const p = Array.from(state.selectedFiles)[0];
+    if (p) selectFile(p);
+  } else if (action === 'copy-path') {
+    const p = Array.from(state.selectedFiles)[0];
+    if (p && await copyToClipboard(p)) { toast('Yol kopyalandı', 'success'); log(`${p} yolu kopyalandı`, 'info', state.username); }
+    else toast('Kopyalama alınmadı', 'error');
+  } else if (action === 'force-send') {
+    const p = Array.from(state.selectedFiles)[0];
+    if (p) await forceSendFile(p);
+  } else if (action === 'resolve-conflict') {
+    const p = Array.from(state.selectedFiles)[0];
+    if (p) await selectFile(p);
+  } else if (action === 'delete') {
+    await deleteSelectedFiles();
+  } else if (action === 'clear-selection') {
+    clearSelection();
+  }
+}
+
+async function forceSendFile(path) {
+  const content = await readLocal(path);
+  if (content === null) { toast('Fayl oxuna bilmədi', 'error'); return; }
+  sendFileUpdate(path, content, { forceFull: true });
+  log(`${path} serverə məcburi göndərildi`, 'success', state.username);
+  toast('Fayl göndərildi', 'success');
+}
+
+$('file-context-menu').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+  hideContextMenu();
+  handleContextAction(btn.dataset.action);
+});
+
+document.addEventListener('click', (e) => {
+  const menu = $('file-context-menu');
+  if (!menu.classList.contains('visible')) return;
+  if (menu.contains(e.target)) return;
+  hideContextMenu();
+});
+
+document.addEventListener('scroll', hideContextMenu, true);
+window.addEventListener('resize', hideContextMenu);
+
+/* ═══════════════════════════════════════════════════════════════════
+   Deletion (server only)
+   ═══════════════════════════════════════════════════════════════════ */
+async function deleteFileFromServer(path) {
+  sendWs({ type: 'file-delete', path });
+  await deleteLocal(path);
+  state.serverFiles.delete(path);
+  state.selectedFiles.delete(path);
+  state.syncedContent.delete(path);
+  state.recentlyWritten.delete(path);
+  state.conflictPaths.delete(path);
+  state.lastEdits.delete(path);
+  if (state.selectedFile === path) resetViewer();
+  log(`${path} silindi`, 'warn', state.username);
+}
+
+async function deleteSelectedFiles() {
+  if (state.role !== 'server') { toast('Yalnız server silə bilər', 'warn'); return; }
+  if (state.vcs.busy) { toast('Başqa əməliyyat davam edir', 'warn'); return; }
+  const paths = Array.from(state.selectedFiles);
+  if (paths.length === 0) return;
+
+  const msg = paths.length === 1 ? `"${paths[0]}" silinsin?` : `${paths.length} fayl silinsin?`;
+  if (!confirm(msg)) return;
+
+  for (const p of paths) await deleteFileFromServer(p);
+  updateBulkToolbar();
+  renderTree();
+  toast(`${paths.length} fayl silindi`, 'warn');
+}
+
+$('btn-delete-selected').addEventListener('click', deleteSelectedFiles);
+$('btn-select-all').addEventListener('click', selectAllVisibleFiles);
+$('btn-clear-selection').addEventListener('click', clearSelection);
+
+/* ═══════════════════════════════════════════════════════════════════
+   Viewer
+   ═══════════════════════════════════════════════════════════════════ */
+function revokeImageUrl() {
+  if (currentImageUrl) { URL.revokeObjectURL(currentImageUrl); currentImageUrl = null; }
+}
+function hideAllViews() {
+  $('viewer-empty').style.display = 'none';
+  $('viewer-message').classList.remove('visible');
+  $('code-view').classList.remove('visible');
+  $('image-view').classList.remove('visible');
+  $('conflict-view').classList.remove('visible');
+}
+function resetViewer() {
+  state.selectedFile = null;
+  state.viewMode = 'empty';
+  $('viewer-path').textContent = '';
+  $('viewer-meta').textContent = '';
+  $('viewer-actions').style.display = 'none';
+  hideAllViews();
+  $('viewer-empty').style.display = 'flex';
+  $('code-gutter').innerHTML = '';
+  $('code-content').textContent = '';
+  revokeImageUrl();
+}
+function showViewerMessage(text) {
+  hideAllViews();
+  state.viewMode = 'message';
+  const msg = $('viewer-message');
+  msg.textContent = text;
+  msg.classList.add('visible');
+}
+function showCodeView(content, path) {
+  hideAllViews();
+  revokeImageUrl();
+  state.viewMode = 'code';
+  $('code-view').classList.add('visible');
+
+  const lines = content.split('\n');
+  const lineCount = content === '' ? 0 : lines.length;
+  const size = state.lastSnapshot[path]?.size ?? content.length;
+  $('viewer-meta').textContent = `${formatBytes(size)} · ${lineCount} sətir`;
+
+  const gutter = $('code-gutter');
+  const code = $('code-content');
+
+  if (content === '') { gutter.innerHTML = ''; code.textContent = ''; return; }
+
+  if (lineCount <= MAX_LINE_NUMBERS) {
+    const nums = [];
+    for (let i = 1; i <= lineCount; i++) nums.push(`<div>${i}</div>`);
+    gutter.innerHTML = nums.join('');
+  } else gutter.innerHTML = '';
+
+  const lang = prismLanguage(path);
+  let highlighted = false;
+  if (lang && typeof Prism !== 'undefined' && Prism.languages[lang] && content.length < MAX_HIGHLIGHT_SIZE) {
+    try { code.innerHTML = Prism.highlight(content, Prism.languages[lang], lang); highlighted = true; }
+    catch (e) { console.warn('Prism highlight failed', e); }
+  }
+  if (!highlighted) code.textContent = content;
+  $('code-view').scrollTop = 0;
+}
+function showImageView(path, bytes, mime) {
+  hideAllViews();
+  revokeImageUrl();
+  state.viewMode = 'image';
+  $('image-view').classList.add('visible');
+  const blob = new Blob([bytes], { type: mime });
+  currentImageUrl = URL.createObjectURL(blob);
+  $('image-preview').src = currentImageUrl;
+  $('image-info').innerHTML = `<strong>${escapeHtml(path.split('/').pop())}</strong> · ${formatBytes(bytes.length)} · ${escapeHtml(mime)}`;
+  $('viewer-meta').textContent = `${formatBytes(bytes.length)} · şəkil`;
+}
+
+async function getConflictLocalContent(conflict, path) {
+  if (conflict.localOverwritten && conflict.backupPath) {
+    return await readConflictFile(conflict.backupPath);
+  }
+  return await readLocal(path);
+}
+
+async function showConflictView(path) {
+  hideAllViews();
+  revokeImageUrl();
+  state.viewMode = 'conflict';
+  $('viewer-meta').textContent = '';
+
+  const conflict = state.conflictPaths.get(path);
+  if (!conflict) {
+    showViewerMessage('Konflikt məlumatı tapılmadı');
+    return;
+  }
+
+  const banner = $('conflict-banner');
+  const bannerText = $('conflict-banner-text');
+  if (conflict.localOverwritten) {
+    banner.classList.add('warn-style');
+    bannerText.textContent = 'Init konflikti - lokal dəyişikliyiniz server tərəfindən üzərinə yazıldı. Orijinal lokal versiya backup-dan oxunur.';
+  } else {
+    banner.classList.remove('warn-style');
+    bannerText.textContent = 'Konflikt aşkarlanıb - lokal dəyişikliyiniz qorunub, hansı versiyanı saxlamaq istədiyinizi seçin';
+  }
+
+  if (conflict.serverContent !== undefined) {
+    const localContent = await getConflictLocalContent(conflict, path);
+    if (localContent === null) {
+      showViewerMessage('Lokal versiya oxuna bilmədi (backup tapılmadı)');
+      return;
+    }
+    $('conflict-server').textContent = conflict.serverContent;
+    $('conflict-local').textContent = localContent;
+    $('conflict-view').classList.add('visible');
+    $('viewer-meta').textContent = `Konflikt · ${formatTime(conflict.ts)}`;
+    return;
+  }
+
+  const localNow = await readLocal(path);
+  const backup = conflict.backupPath ? await readConflictFile(conflict.backupPath) : null;
+  if (localNow !== null && backup !== null) {
+    $('conflict-server').textContent = localNow;
+    $('conflict-local').textContent = backup;
+    $('conflict-view').classList.add('visible');
+    $('viewer-meta').textContent = `Konflikt · ${formatTime(conflict.ts)}`;
+    return;
+  }
+  showViewerMessage('Konflikt məlumatı tam deyil');
+}
+
+async function selectFile(path) {
+  state.selectedFile = path;
+  $('viewer-path').textContent = path;
+  $('viewer-actions').style.display = 'flex';
+  renderTree();
+
+  if (state.conflictPaths.has(path)) { await showConflictView(path); return; }
+
+  const mime = imageMime(path);
+  if (mime) {
+    const bytes = await readLocalBytes(path);
+    if (bytes) { showImageView(path, bytes, mime); return; }
+  }
+
+  const content = await readLocal(path);
+  if (content === null) {
+    $('viewer-meta').textContent = '';
+    showViewerMessage('Fayl yerli olaraq silinmiş ola bilər.');
+    return;
+  }
+  if (content.includes('\u0000')) {
+    $('viewer-meta').textContent = '';
+    showViewerMessage('Binary fayl - göstərilmir');
+    return;
+  }
+  showCodeView(content, path);
+}
+
+$('btn-refresh').addEventListener('click', () => { if (state.selectedFile) selectFile(state.selectedFile); });
+
+$('btn-copy').addEventListener('click', async () => {
+  if (!state.selectedFile) return;
+  if (state.viewMode === 'image') { toast('Şəkil üçün kopyalama yoxdur', 'warn'); return; }
+  const content = await readLocal(state.selectedFile);
+  if (content === null) return;
+  if (await copyToClipboard(content)) {
+    log(`${state.selectedFile} kopyalandı`, 'success', state.username);
+    toast('Fayl kopyalandı', 'success');
+  } else { toast('Kopyalama alınmadı', 'error'); }
+});
+
+$('btn-download').addEventListener('click', async () => {
+  if (!state.selectedFile) return;
+  const path = state.selectedFile;
+  const mime = imageMime(path);
+  let blob;
+  if (mime) {
+    const bytes = await readLocalBytes(path);
+    if (!bytes) { toast('Fayl oxuna bilmədi', 'error'); return; }
+    blob = new Blob([bytes], { type: mime });
+  } else {
+    const content = await readLocal(path);
+    if (content === null) { toast('Fayl oxuna bilmədi', 'error'); return; }
+    blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = path.split('/').pop();
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  log(`${path} yükləndi`, 'success', state.username);
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   Conflict resolution
+   ═══════════════════════════════════════════════════════════════════ */
+$('btn-keep-server').addEventListener('click', async () => {
+  const path = state.selectedFile;
+  const conflict = state.conflictPaths.get(path);
+  if (!path || !conflict) return;
+
+  let serverContent = conflict.serverContent;
+  if (serverContent === undefined) {
+    serverContent = await readLocal(path);
+  }
+  if (serverContent === null) { toast('Server versiyası oxuna bilmədi', 'error'); return; }
+
+  await writeLocal(path, serverContent);
+  state.syncedContent.set(path, serverContent);
+  state.conflictPaths.delete(path);
+  log(`${path} - server versiyası saxlanıldı`, 'info', state.username);
+  toast('Server versiyası saxlanıldı', 'success');
+  renderTree();
+  await selectFile(path);
+});
+
+$('btn-keep-local').addEventListener('click', async () => {
+  const path = state.selectedFile;
+  const conflict = state.conflictPaths.get(path);
+  if (!path || !conflict) return;
+
+  let localContent;
+  if (conflict.serverContent !== undefined) {
+    localContent = await getConflictLocalContent(conflict, path);
+  } else {
+    localContent = conflict.backupPath ? await readConflictFile(conflict.backupPath) : null;
+  }
+  if (localContent === null) { toast('Lokal versiya oxuna bilmədi', 'error'); return; }
+
+  await writeLocal(path, localContent);
+  sendFileUpdate(path, localContent, { forceFull: true });
+  state.conflictPaths.delete(path);
+  log(`${path} - lokal versiya saxlanıldı və göndərildi`, 'success', state.username);
+  toast('Lokal versiya saxlanıldı və göndərildi', 'success');
+  renderTree();
+  await selectFile(path);
+});
+
+$('btn-manual-merge').addEventListener('click', async () => {
+  const path = state.selectedFile;
+  const conflict = state.conflictPaths.get(path);
+  if (!path || !conflict) return;
+
+  let serverContent, localContent;
+  if (conflict.serverContent !== undefined) {
+    serverContent = conflict.serverContent;
+    localContent = await getConflictLocalContent(conflict, path);
+  } else {
+    serverContent = await readLocal(path);
+    localContent = conflict.backupPath ? await readConflictFile(conflict.backupPath) : null;
+  }
+  if (serverContent === null || localContent === null) {
+    toast('Versiyalar oxuna bilmədi', 'error');
+    return;
+  }
+
+  $('merge-filename').textContent = path;
+  $('merge-textarea').value =
+    `<<<<<<< SERVER VERSIYASI\n${serverContent}\n=======\n${localContent}\n>>>>>>> LOKAL VERSIYA\n`;
+  state.mergeTargetPath = path;
+  state.mergeBackupPath = conflict.backupPath;
+  $('file-merge-modal').hidden = false;
+  $('merge-textarea').focus();
+});
+
+$('merge-cancel').addEventListener('click', closeMergeModal);
+$('merge-save').addEventListener('click', async () => {
+  const path = state.mergeTargetPath;
+  const content = $('merge-textarea').value;
+  if (!path) return;
+  await writeLocal(path, content);
+  sendFileUpdate(path, content, { forceFull: true });
+  state.conflictPaths.delete(path);
+  log(`${path} - manual birləşdirmə saxlanıldı`, 'success', state.username);
+  toast('Birləşdirmə yadda saxlanıldı', 'success');
+  closeMergeModal();
+  renderTree();
+  await selectFile(path);
+});
+
+function closeMergeModal() {
+  $('file-merge-modal').hidden = true;
+  state.mergeTargetPath = null;
+  state.mergeBackupPath = null;
+}
+
+$('file-merge-modal').addEventListener('click', (e) => {
+  if (e.target === $('file-merge-modal')) closeMergeModal();
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   Search
+   ═══════════════════════════════════════════════════════════════════ */
+$('tree-search').addEventListener('input', (e) => {
+  state.searchQuery = e.target.value.trim();
+  $('btn-clear-search').classList.toggle('visible', state.searchQuery.length > 0);
+  renderTree();
+});
+$('btn-clear-search').addEventListener('click', () => {
+  $('tree-search').value = '';
+  state.searchQuery = '';
+  $('btn-clear-search').classList.remove('visible');
+  renderTree();
+  $('tree-search').focus();
+});
+
+$('btn-clear-log').addEventListener('click', () => {
+  $('log').innerHTML = '<div class="log-empty">Heç bir hadisə yoxdur</div>';
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   Modal close handlers — reset transient state
+   ═══════════════════════════════════════════════════════════════════ */
+document.querySelectorAll('[data-close]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const id = btn.dataset.close;
+    const modal = $(id);
+    if (!modal) return;
+    modal.hidden = true;
+
+    if (id === 'branch-merge-modal') {
+      state.vcs.pendingMerge = null;
+      clearMergePreviewTimeout();
+    }
+  });
+});
+
+document.querySelectorAll('.modal').forEach(modal => {
+  modal.addEventListener('click', (e) => {
+    if (e.target !== modal) return;
+    modal.hidden = true;
+    if (modal.id === 'branch-merge-modal') {
+      state.vcs.pendingMerge = null;
+      clearMergePreviewTimeout();
+    }
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   Disconnect
+   ═══════════════════════════════════════════════════════════════════ */
+$('btn-disconnect').addEventListener('click', async () => {
+  if (!confirm('Bağlantını kəsmək istədiyinizə əminsiniz?')) return;
+
+  state.intentionalDisconnect = true;
+  if (state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null; }
+  stopPolling();
+  stopMemoryCleanup();
+  sendQueue.length = 0;
+  flushScheduled = false;
+
+  if (pendingDirtyRequest) {
+    clearTimeout(pendingDirtyRequest.timer);
+    pendingDirtyRequest.reject(new Error('Bağlantı kəsildi'));
+    pendingDirtyRequest = null;
+  }
+  for (const [, rec] of vcsBusyRetries) {
+    if (rec.timer) clearTimeout(rec.timer);
+  }
+  vcsBusyRetries.clear();
+  clearMergePreviewTimeout();
+
+  if (state.ws) { try { state.ws.close(1000, 'user disconnected'); } catch {} state.ws = null; }
+
+  state.dirHandle = null;
+  state.virtualFS = null;
+  state.projectName = null;
+  state.wsUrl = null;
+  state.clientId = null;
+  state.clientCount = 0;
+  state.onlineUsers = [];
+  state.snapshotCount = 0;
+  state.reconnectAttempts = 0;
+  state.connectionRejected = false;
+  state.serverProtocolVersion = null;
+  state.serverCapabilities = new Set();
+  state.serverSupportsPatches = false;
+  state.lastSnapshot = {};
+  state.syncedContent.clear();
+  state.recentlyWritten.clear();
+  state.conflictPaths.clear();
+  state.lastEdits.clear();
+  state.serverFiles.clear();
+  state.selectedFile = null;
+  state.selectedFiles.clear();
+  state.lastClickedPath = null;
+  state.collapsedDirs.clear();
+  state.searchQuery = '';
+  state.initBuffer = null;
+  state.hasReceivedInit = false;
+  state.finalizingInit = false;
+  state.viewMode = 'empty';
+  state.mergeTargetPath = null;
+  state.mergeBackupPath = null;
+  pendingInitResolve = null;
+  pendingInitReject = null;
+
+  state.vcs = {
+    activeBranch: 'main',
+    branches: [],
+    recentCommits: [],
+    history: null,
+    showAuto: false,
+    busy: false,
+    busyTimer: null,
+    pendingMerge: null,
+  };
+  state.activeTab = 'activity';
+
+  revokeImageUrl();
+  $('log').innerHTML = '<div class="log-empty">Heç bir hadisə yoxdur</div>';
+  $('history-list').innerHTML = '<div class="history-empty">Tarixçe yüklənir…</div>';
+  $('history-badge').textContent = '0';
+  $('log').hidden = false;
+  $('history').hidden = true;
+  document.querySelectorAll('.panel-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === 'activity'));
+  $('tree').innerHTML = '';
+  $('file-count').textContent = '0';
+  $('project-name-text').textContent = '—';
+  $('role-badge').textContent = '—';
+  $('role-badge').className = 'role-badge';
+  $('user-badge-text').textContent = '—';
+  $('viewer-path').textContent = '';
+  $('viewer-meta').textContent = '';
+  $('viewer-actions').style.display = 'none';
+  hideAllViews();
+  $('viewer-empty').style.display = 'flex';
+  $('code-gutter').innerHTML = '';
+  $('code-content').textContent = '';
+  $('conflict-server').textContent = '';
+  $('conflict-local').textContent = '';
+  $('file-merge-modal').hidden = true;
+  $('commit-modal').hidden = true;
+  $('branch-create-modal').hidden = true;
+  $('branch-merge-modal').hidden = true;
+  $('commit-details-modal').hidden = true;
+  $('folder-btn-text').textContent = 'Qovluq seç';
+  $('btn-pick-folder').classList.remove('selected');
+  $('btn-connect').disabled = false;
+  $('btn-connect-text').textContent = 'Qoşul və Sinxronlaşdır';
+  $('tree-search').value = '';
+  $('btn-clear-search').classList.remove('visible');
+  $('bulk-toolbar').hidden = true;
+  $('tree-panel').classList.remove('has-selection');
+  $('snapshot-badge').classList.remove('visible', 'flash', 'open');
+  $('snapshot-count').textContent = '0';
+  $('snapshot-dropdown').hidden = true;
+  $('snapshot-hint-field').style.display = 'none';
+  $('btn-delete-selected').style.display = 'none';
+  $('btn-manual-snapshot').style.display = 'none';
+  $('btn-commit').style.display = 'none';
+  $('branch-badge').classList.remove('open');
+  $('branch-dropdown').hidden = true;
+  $('fsa-warning').style.display = 'none';
+  $('folder-field').style.display = 'block';
+  updateVirtualBanner();
+  updateConn('offline');
+  updateOnlineUsers([]);
+  updateSyncModeBadge();
+  renderBranchBadge();
+  toggleOnlineDropdown(false);
+  toggleSnapshotDropdown(false);
+  toggleBranchDropdown(false);
+  hideContextMenu();
+  updateVcsButtons();
+
+  showScreen('screen-role');
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   Keyboard shortcuts
+   ═══════════════════════════════════════════════════════════════════ */
+document.addEventListener('keydown', (e) => {
+  const inInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+
+  if (e.key === 'Escape') {
+    if (!$('file-merge-modal').hidden) { closeMergeModal(); return; }
+    if (!$('commit-modal').hidden) { $('commit-modal').hidden = true; return; }
+    if (!$('branch-create-modal').hidden) { $('branch-create-modal').hidden = true; return; }
+    if (!$('branch-merge-modal').hidden) {
+      $('branch-merge-modal').hidden = true;
+      state.vcs.pendingMerge = null;
+      clearMergePreviewTimeout();
+      return;
+    }
+    if (!$('commit-details-modal').hidden) { $('commit-details-modal').hidden = true; return; }
+    hideContextMenu();
+    toggleOnlineDropdown(false);
+    toggleSnapshotDropdown(false);
+    toggleBranchDropdown(false);
+    return;
+  }
+
+  if (!$('screen-main').classList.contains('active')) return;
+  if (inInput) return;
+
+  if ((e.key === 'k' && (e.ctrlKey || e.metaKey)) || e.key === '/') {
+    e.preventDefault();
+    $('tree-search').focus();
+    $('tree-search').select();
+    return;
+  }
+  if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    selectAllVisibleFiles();
+    return;
+  }
+  if (e.key === 'Delete' && state.selectedFiles.size > 0) {
+    e.preventDefault();
+    deleteSelectedFiles();
+    return;
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   Init
+   ═══════════════════════════════════════════════════════════════════ */
+loadUsername();
+updateSyncModeBadge();
+updateVirtualBanner();
+renderBranchBadge();
+renderHistory();
+updateVcsButtons();
+</script>
+</body>
+</html>
